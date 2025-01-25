@@ -1,7 +1,7 @@
 # Opera: A Tool-Discovering Agent Framework  
 ![Build Status](https://github.com/Br0ce/opera/actions/workflows/ci.yml/badge.svg)
 [![go.mod Go version](https://img.shields.io/github/go-mod/go-version/Br0ce/opera)](https://github.com/Br0ce/opera)
-![License](https://img.shields.io/badge/license-MIT-green)  
+![License](https://img.shields.io/badge/license-MIT-green)
 [![Go Reference](https://pkg.go.dev/badge/github.com/Br0ce/opera.svg)](https://pkg.go.dev/github.com/Br0ce/opera)
 
 Opera is a lightweight, extensible agent framework written in Go, designed to enable seamless discovery and utilization of tools available in a Docker network. With Opera, developers can build intelligent agents that can dynamically identify and interact with other services or tools within the same network, streamlining workflows and fostering better service orchestration.  
@@ -29,15 +29,9 @@ Opera was born out of the need for an agent framework that goes beyond static co
 Follow these steps to get started with Opera:  
 
 ### Prerequisites  
-- [Go](https://golang.org/) (version 1.20 or newer).  
+- [Go](https://golang.org/) (version 1.22 or newer).  
 - [Docker](https://www.docker.com/) installed on your machine.  
 - Basic knowledge of Docker networking and services.  
-
-### Installation  
-1. Clone the Opera repository:  
-   ```bash  
-   git clone https://github.com/Br0ce/opera.git  
-   cd opera  
 
 ### License
 Opera is licensed under the MIT License.
