@@ -1,0 +1,46 @@
+# This file is for local development only.
+
+services:
+
+  opera:
+    image: "mcr.microsoft.com/devcontainers/go:1-1.23-bookworm"
+    volumes:
+      - ../..:/workspaces:cached
+      # - ${HOME}${USERPROFILE}/.netrc:/root/.netrc:ro,cached
+      # - ${HOME}${USERPROFILE}/.ssh:/root/.ssh:ro,cached
+    command: sleep infinity
+
+  weather:
+        build:
+            context: ./mock/weather
+        restart: always
+        container_name: weather
+        environment:
+            - ADDR=:8080
+            - SLEEP_TIME=5s
+            - RANDOM_FAIL=false
+
+  shark:
+        build:
+            context: ./mock/shark
+        restart: always
+        container_name: shark
+        environment:
+            - ADDR=:8080
+            - SLEEP_TIME=5s
+            - RANDOM_FAIL=false
+ 
+  tracing:
+    image: jaegertracing/all-in-one:1.64.0
+    container_name: jaeger
+    restart: unless-stopped
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - 16686:16686
+      - 4317:4317
+      - 4318:4318
+      - 14250:14250
+      - 14268:14268
+      - 14269:14269
+      - 9411:9411

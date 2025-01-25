@@ -1,0 +1,34 @@
+{
+    "tools": [
+        {
+            "Name": "get_weather",
+            "Description": "Get weather at the given location",
+            "Parameters": {
+                "Properties": {
+                    "location": {
+                        "type": "string"
+                    }
+                },
+                "Required": [
+                    "location"
+                ]
+            },
+            "Addr": "http://weather:8080"
+        },
+        {
+            "Name": "get_shark_warning",
+            "Description": "Get current shark warning level for the location",
+            "Parameters": {
+                "Properties": {
+                    "location": {
+                        "type": "string"
+                    }
+                },
+                "Required": [
+                    "location"
+                ]
+            },
+            "Addr": "http://shark:8080"
+        }
+    ]
+}
