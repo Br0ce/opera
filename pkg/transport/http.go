@@ -7,15 +7,25 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type HTTPTransporter struct {
+	client  http.Client
 	timeout time.Duration
 	log     *slog.Logger
 }
 
 func NewHTTP(timeout time.Duration, log *slog.Logger) *HTTPTransporter {
-	return &HTTPTransporter{timeout: timeout, log: log}
+	cl := http.Client{
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
+	}
+	return &HTTPTransporter{
+		client:  cl,
+		timeout: timeout,
+		log:     log,
+	}
 }
 
 // Post exectutes an http post request.
@@ -51,9 +61,9 @@ func (tp *HTTPTransporter) Get(ctx context.Context, addr string, header map[stri
 func (tp *HTTPTransporter) do(header http.Header, request *http.Request) ([]byte, error) {
 	tp.log.Debug("execute request", "method", "do")
 
-	cl := http.Client{}
 	request.Header = header
-	response, err := cl.Do(request)
+
+	response, err := tp.client.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("execute request: %w", err)
 	}

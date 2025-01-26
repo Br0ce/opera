@@ -19,6 +19,7 @@ services:
             - ADDR=:8080
             - SLEEP_TIME=5s
             - RANDOM_FAIL=false
+            - TRACING_ADDR=tracing:4318
 
   shark:
         build:
@@ -29,6 +30,7 @@ services:
             - ADDR=:8080
             - SLEEP_TIME=5s
             - RANDOM_FAIL=false
+            - TRACING_ADDR=tracing:4318
  
   tracing:
     image: jaegertracing/all-in-one:1.64.0
