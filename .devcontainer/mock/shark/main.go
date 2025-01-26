@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -33,10 +34,13 @@ func main() {
 	st := os.Getenv("SLEEP_TIME")
 	sleepTime, err := time.ParseDuration(st)
 	if err != nil {
-		log.Println("no environment variable SLEEP_TIME, default=10s")
-		sleepTime = time.Second * 10
+		log.Println("no environment variable SLEEP_TIME, default=5s")
+		sleepTime = time.Second * 5
 	}
-	log.Printf("SLEEP_TIME is %v sec\n", sleepTime)
+	maxNanoseconds := sleepTime.Nanoseconds()
+	randomNanoseconds := rand.Int63n(maxNanoseconds)
+	sleepTime = time.Duration(randomNanoseconds) * time.Nanosecond
+	log.Printf("SLEEP_TIME is randomized to %v sec\n", sleepTime)
 
 	rf := os.Getenv("RANDOM_FAIL")
 	var fail bool
