@@ -6,7 +6,8 @@ on:
       - 'data/**'
       - 'README.md'
 
-name: Test
+name: test
+
 jobs:
   lint:
     env:
@@ -34,10 +35,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: ${{ env.GOPATH }}/src/github.com/${{ github.repository }}
-      - name: Linting
-        run: |
-          go get -d -t ./...
-          make lint
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - name: Run golangci-lint
+        run: make lint
 
   test:
     env:
@@ -66,6 +67,4 @@ jobs:
         with:
           path: ${{ env.GOPATH }}/src/github.com/${{ github.repository }}
       - name: Test
-        run: |
-          go get -d -t ./...
-          make test
+        run: make test-race
