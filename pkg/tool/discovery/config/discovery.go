@@ -7,6 +7,10 @@ import (
 	"log/slog"
 	"os"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/Br0ce/opera/pkg/monitor"
 	"github.com/Br0ce/opera/pkg/tool"
 )
 
@@ -14,6 +18,7 @@ var _ tool.Discovery = (*Discovery)(nil)
 
 type Discovery struct {
 	db  tool.DB
+	tr  trace.Tracer
 	log *slog.Logger
 }
 
@@ -36,15 +41,24 @@ func NewDiscovery(ctx context.Context, path string, db tool.DB, log *slog.Logger
 
 	return &Discovery{
 		db:  db,
+		tr:  otel.Tracer("ConfigDiscovery"),
 		log: log,
 	}, nil
 }
 
 func (di *Discovery) Get(ctx context.Context, name string) (tool.Tool, error) {
+	ctx, span := di.tr.Start(ctx, "get tool")
+	defer span.End()
+	di.log.Debug("get tool", "method", "Get", "name", name, "traceID", monitor.TraceID(span))
+
 	return di.db.Get(ctx, name)
 }
 
 func (di *Discovery) All(ctx context.Context) ([]tool.Tool, error) {
+	ctx, span := di.tr.Start(ctx, "get all tools")
+	defer span.End()
+	di.log.Debug("get all tools", "method", "All", "traceID", monitor.TraceID(span))
+
 	return di.db.All(ctx)
 }
 

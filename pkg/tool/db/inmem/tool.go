@@ -6,6 +6,10 @@ import (
 	"log/slog"
 	"sync"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/Br0ce/opera/pkg/monitor"
 	"github.com/Br0ce/opera/pkg/tool"
 )
 
@@ -14,18 +18,23 @@ var _ tool.DB = (*Tool)(nil)
 type Tool struct {
 	tools map[string]tool.Tool
 	mu    sync.RWMutex
+	tr    trace.Tracer
 	log   *slog.Logger
 }
 
 func NewDB(log *slog.Logger) *Tool {
 	return &Tool{
 		tools: make(map[string]tool.Tool),
+		tr:    otel.Tracer("ToolDB"),
 		log:   log,
 	}
 }
 
 func (to *Tool) Add(ctx context.Context, tool tool.Tool) error {
-	to.log.Debug("add tool", "method", "Add", "name", tool.Name)
+	_, span := to.tr.Start(ctx, "add tool")
+	defer span.End()
+	to.log.Debug("add tool", "method", "Add", "name", tool.Name, "traceID", monitor.TraceID(span))
+
 	to.mu.Lock()
 	defer to.mu.Unlock()
 
@@ -44,7 +53,10 @@ func (to *Tool) Add(ctx context.Context, tool tool.Tool) error {
 }
 
 func (to *Tool) Get(ctx context.Context, name string) (tool.Tool, error) {
-	to.log.Debug("get tool", "method", "Get", "name", name)
+	_, span := to.tr.Start(ctx, "get tool")
+	defer span.End()
+	to.log.Debug("get tool", "method", "Get", "name", name, "traceID", monitor.TraceID(span))
+
 	to.mu.RLock()
 	defer to.mu.RUnlock()
 
@@ -61,7 +73,10 @@ func (to *Tool) Get(ctx context.Context, name string) (tool.Tool, error) {
 }
 
 func (to *Tool) All(ctx context.Context) ([]tool.Tool, error) {
-	to.log.Debug("get all tools", "method", "All")
+	_, span := to.tr.Start(ctx, "get all tools")
+	defer span.End()
+	to.log.Debug("get all tools", "method", "All", "traceID", monitor.TraceID(span))
+
 	tt := make([]tool.Tool, 0, len(to.tools))
 	for _, t := range to.tools {
 		tt = append(tt, t)

@@ -11,7 +11,10 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 
+	"github.com/Br0ce/opera/pkg/monitor"
 	"github.com/Br0ce/opera/pkg/tool"
 )
 
@@ -31,6 +34,7 @@ var _ tool.Discovery = (*Discovery)(nil)
 type Discovery struct {
 	db        tool.DB
 	transport Transporter
+	tr        trace.Tracer
 	log       *slog.Logger
 }
 
@@ -38,16 +42,24 @@ func NewDiscovery(db tool.DB, transport Transporter, log *slog.Logger) *Discover
 	return &Discovery{
 		db:        db,
 		transport: transport,
+		tr:        otel.Tracer("DockerDiscovery"),
 		log:       log,
 	}
 }
 
 func (di *Discovery) Get(ctx context.Context, name string) (tool.Tool, error) {
+	ctx, span := di.tr.Start(ctx, "get tool")
+	defer span.End()
+	di.log.Debug("get tool", "method", "Get", "name", name, "traceID", monitor.TraceID(span))
+
 	return di.db.Get(ctx, name)
 }
 
 func (di *Discovery) All(ctx context.Context) ([]tool.Tool, error) {
-	di.log.Debug("get all tools", "method", "FindAll")
+	ctx, span := di.tr.Start(ctx, "get all tools")
+	defer span.End()
+	di.log.Debug("get all tools", "method", "All", "traceID", monitor.TraceID(span))
+
 	err := di.collectTools(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("discover tools: %w", err)
@@ -101,7 +113,10 @@ func (di *Discovery) addTool(ctx context.Context, container types.Container, err
 		return
 	}
 
-	di.log.Debug("found tool container", "method", "addTool", "container ID", container.ID[:12], "imageTage", container.Image)
+	di.log.Debug("found tool container",
+		"method", "addTool",
+		"containerID", container.ID[:12],
+		"imageTage", container.Image)
 
 	addr := url.URL{
 		Scheme: "http",
@@ -135,22 +150,10 @@ func (di *Discovery) addTool(ctx context.Context, container types.Container, err
 	errChan <- nil
 }
 
-func containers(ctx context.Context) ([]types.Container, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, fmt.Errorf("new docker client: %w", err)
-	}
-	defer cli.Close()
-
-	containers, err := cli.ContainerList(ctx, container.ListOptions{All: false})
-	if err != nil {
-		return nil, fmt.Errorf("list containers: %w", err)
-	}
-	return containers, nil
-}
-
 func (di *Discovery) config(ctx context.Context, addr url.URL) (config, error) {
-	di.log.Debug("get tool config", "method", "config", "addr", addr.String())
+	ctx, span := di.tr.Start(ctx, "get config")
+	defer span.End()
+	di.log.Debug("get tool config", "method", "config", "addr", addr.String(), "traceID", monitor.TraceID(span))
 
 	url := addr.JoinPath("config")
 	bb, err := di.transport.Get(ctx, url.String(), nil)
@@ -164,4 +167,18 @@ func (di *Discovery) config(ctx context.Context, addr url.URL) (config, error) {
 	}
 
 	return cfg, nil
+}
+
+func containers(ctx context.Context) ([]types.Container, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, fmt.Errorf("new docker client: %w", err)
+	}
+	defer cli.Close()
+
+	containers, err := cli.ContainerList(ctx, container.ListOptions{All: false})
+	if err != nil {
+		return nil, fmt.Errorf("list containers: %w", err)
+	}
+	return containers, nil
 }

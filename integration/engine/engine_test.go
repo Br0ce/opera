@@ -12,6 +12,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
+	"go.opentelemetry.io/otel"
 
 	"github.com/Br0ce/opera/pkg/action"
 	"github.com/Br0ce/opera/pkg/agent"
@@ -44,8 +45,19 @@ func TestEngine_Query(t *testing.T) {
 	}
 
 	ctx := context.TODO()
+	tpShutdown, err := monitor.StartTestTracing(ctx, true, "tracing:4318")
+	if err != nil {
+		t.Fatalf("start tracing: %s", err.Error())
+	}
+	defer func() {
+		err := tpShutdown(ctx)
+		if err != nil {
+			fmt.Printf("shut down open telemetry")
+		}
+	}()
+
 	log := monitor.NewTestLogger(true)
-	client := genai.NewClient(token, "gpt-4o")
+	client := genai.NewClient(token, "gpt-4o", log)
 	db := inmem.NewDB(log)
 	trans := transport.NewHTTP(time.Second*5, log)
 	discovery := docker.NewDiscovery(db, trans, log)
@@ -90,6 +102,7 @@ func TestEngine_Query(t *testing.T) {
 				Agent:   test.fields.Agent,
 				Actor:   test.fields.Actor,
 				MaxIter: test.fields.MaxIter,
+				Tr:      otel.Tracer("Engine"),
 				Log:     test.fields.Log,
 			}
 			got, err := eg.Query(test.args.ctx, test.args.query)

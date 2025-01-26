@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/Br0ce/opera/pkg/action"
 	"github.com/Br0ce/opera/pkg/message"
 	"github.com/Br0ce/opera/pkg/percept"
@@ -19,6 +22,7 @@ type Agent struct {
 	client Chatter
 	msgs   []message.Message
 	tools  []tool.Tool
+	tr     trace.Tracer
 	log    *slog.Logger
 }
 
@@ -35,6 +39,7 @@ func New(sysPrompt string, tools []tool.Tool, client Chatter, log *slog.Logger) 
 			},
 		}},
 		tools: tools,
+		tr:    otel.Tracer("Agent"),
 		log:   log,
 	}
 }
@@ -42,6 +47,9 @@ func New(sysPrompt string, tools []tool.Tool, client Chatter, log *slog.Logger) 
 // Action returns, based on the given perceptions and the history of prior perceptions an
 // action which shoud be executed.
 func (ag *Agent) Action(ctx context.Context, percepts []percept.Percept) (action.Action, error) {
+	ctx, span := ag.tr.Start(ctx, "Action")
+	defer span.End()
+
 	ag.msgs = append(ag.msgs, messages(percepts)...)
 
 	answer, err := ag.client.Chat(ctx, ag.msgs, ag.tools)
