@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/Br0ce/opera/pkg/action"
 	"github.com/Br0ce/opera/pkg/agent"
 	"github.com/Br0ce/opera/pkg/percept"
@@ -14,10 +16,14 @@ type Engine struct {
 	Agent   *agent.Agent
 	Actor   *action.Actor
 	MaxIter int
+	Tr      trace.Tracer
 	Log     *slog.Logger
 }
 
 func (eg *Engine) Query(ctx context.Context, query string) (string, error) {
+	ctx, span := eg.Tr.Start(ctx, "Query")
+	defer span.End()
+
 	percepts := []percept.Percept{percept.MakeTextUser(query)}
 	for i := range eg.MaxIter {
 		eg.Log.Debug("iterate agent", "method", "Act", "iterNum", i, "maxIter", eg.MaxIter)

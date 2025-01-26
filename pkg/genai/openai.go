@@ -3,13 +3,17 @@ package genai
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Br0ce/opera/pkg/action"
 	"github.com/Br0ce/opera/pkg/message"
+	"github.com/Br0ce/opera/pkg/monitor"
 	"github.com/Br0ce/opera/pkg/percept"
 	"github.com/Br0ce/opera/pkg/tool"
 )
@@ -17,15 +21,27 @@ import (
 type Client struct {
 	client *openai.Client
 	model  string
+	tr     trace.Tracer
+	log    *slog.Logger
 }
 
-func NewClient(token string, modelName string) *Client {
+func NewClient(token string, modelName string, log *slog.Logger) *Client {
 	return &Client{
 		client: openai.NewClient(option.WithAPIKey(token)),
-		model:  modelName}
+		model:  modelName,
+		tr:     otel.Tracer("OpenAIClient"),
+		log:    log,
+	}
 }
 
 func (c *Client) Chat(ctx context.Context, msgs []message.Message, tt []tool.Tool) (message.Message, error) {
+	ctx, span := c.tr.Start(ctx, "chat request")
+	defer span.End()
+	c.log.Debug("execute chat request to openai",
+		"method", "Chat",
+		"lenMsgs", len(msgs),
+		"traceID", monitor.TraceID)
+
 	chat, err := c.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Messages: openai.F(messages(msgs)),
 		Model:    openai.F(c.model),
