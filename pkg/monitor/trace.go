@@ -27,7 +27,7 @@ func StartTracing(ctx context.Context, tpAddr string) (func(context.Context) err
 	)
 	otel.SetTextMapPropagator(prop)
 
-	tp, err := newTraceProvider(tpAddr)
+	tp, err := newTraceProvider(ctx, tpAddr)
 	if err != nil {
 		err = errors.Join(err, tp.Shutdown(ctx))
 		return nil, fmt.Errorf("set trace provider: %w", err)
@@ -54,14 +54,14 @@ func StartTestTracing(ctx context.Context, integration bool, tpAddr string) (fun
 }
 
 // newTraceProvider creates a trace provider with the given addr.
-func newTraceProvider(addr string) (*trace.TracerProvider, error) {
+func newTraceProvider(ctx context.Context, addr string) (*trace.TracerProvider, error) {
 	client := otlptracehttp.NewClient(
 		otlptracehttp.WithEndpoint(addr),
 		// TODO: Enable TLS
 		otlptracehttp.WithInsecure(),
 	)
 
-	exporter, err := otlptrace.New(context.Background(), client)
+	exporter, err := otlptrace.New(ctx, client)
 	if err != nil {
 		return nil, fmt.Errorf("creating OTLP trace exporter: %w", err)
 	}
