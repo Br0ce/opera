@@ -96,13 +96,13 @@ func (ac *Actor) act(ctx context.Context, call Call) (percept.Percept, error) {
 		return percept.Percept{}, fmt.Errorf("get tool: %w", err)
 	}
 
-	addr := tool.Addr.String()
-	attr := attribute.String("tool.addr", addr)
+	addr := tool.Addr()
+	attr := attribute.String("tool.addr", addr.String())
 	span.SetAttributes(attr)
 
 	header := make(map[string][]string)
 	header["content-type"] = []string{"application/json"}
-	resp, err := ac.transport.Post(ctx, addr, header, strings.NewReader(call.Arguments))
+	resp, err := ac.transport.Post(ctx, addr.String(), header, strings.NewReader(call.Arguments))
 	if err != nil {
 		return percept.Percept{}, fmt.Errorf("transport: %w", err)
 	}

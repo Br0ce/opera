@@ -38,16 +38,12 @@ func (to *Tool) Add(ctx context.Context, tool tool.Tool) error {
 	to.mu.Lock()
 	defer to.mu.Unlock()
 
-	if tool.Name == "" {
-		return fmt.Errorf("invalid name")
-	}
-
-	_, ok := to.tools[tool.Name]
+	_, ok := to.tools[tool.Name()]
 	if ok {
 		return fmt.Errorf("tool already exists")
 	}
 
-	to.tools[tool.Name] = tool
+	to.tools[tool.Name()] = tool
 
 	return nil
 }
