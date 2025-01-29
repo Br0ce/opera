@@ -40,7 +40,7 @@ func (c *Client) Chat(ctx context.Context, msgs []message.Message, tt []tool.Too
 	c.log.Debug("execute chat request to openai",
 		"method", "Chat",
 		"lenMsgs", len(msgs),
-		"traceID", monitor.TraceID)
+		"traceID", monitor.TraceID(span))
 
 	chat, err := c.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Messages: openai.F(messages(msgs)),
