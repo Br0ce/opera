@@ -15,6 +15,40 @@ import (
 )
 
 func TestDiscovery_All(t *testing.T) {
+	shark, err := tool.MakeTool(
+		tool.WithName("get_shark_warning"),
+		tool.WithDescription("Get current shark warning level for the location"),
+		tool.WithParameters(map[string]any{
+			"location": map[string]any{
+				"type": "string",
+			},
+		}, []string{"location"}),
+		tool.WithAddr(url.URL{
+			Scheme: "http",
+			Host:   "shark:8080",
+			Path:   "/",
+		}),
+	)
+	if err != nil {
+		t.Fatalf("make shark tool: %s", err.Error())
+	}
+	weather, err := tool.MakeTool(
+		tool.WithName("get_weather"),
+		tool.WithDescription("Get weather at the given location"),
+		tool.WithParameters(map[string]any{
+			"location": map[string]any{
+				"type": "string",
+			},
+		}, []string{"location"}),
+		tool.WithAddr(url.URL{
+			Scheme: "http",
+			Host:   "weather:8080",
+			Path:   "/",
+		}),
+	)
+	if err != nil {
+		t.Fatalf("make shark tool: %s", err.Error())
+	}
 	tests := []struct {
 		name    string
 		ctx     context.Context
@@ -25,40 +59,8 @@ func TestDiscovery_All(t *testing.T) {
 			name: "find both dev tool services",
 			ctx:  context.TODO(),
 			want: map[string]tool.Tool{
-				"get_shark_warning": {
-					Name:        "get_shark_warning",
-					Description: "Get current shark warning level for the location",
-					Parameters: tool.Parameters{
-						Properties: map[string]any{
-							"location": map[string]any{
-								"type": "string",
-							},
-						},
-						Required: []string{"location"},
-					},
-					Addr: url.URL{
-						Scheme: "http",
-						Host:   "shark:8080",
-						Path:   "/",
-					},
-				},
-				"get_weather": {
-					Name:        "get_weather",
-					Description: "Get weather at the given location",
-					Parameters: tool.Parameters{
-						Properties: map[string]any{
-							"location": map[string]any{
-								"type": "string",
-							},
-						},
-						Required: []string{"location"},
-					},
-					Addr: url.URL{
-						Scheme: "http",
-						Host:   "weather:8080",
-						Path:   "/",
-					},
-				},
+				"get_shark_warning": shark,
+				"get_weather":       weather,
 			},
 			wantErr: false,
 		},
@@ -81,18 +83,14 @@ func TestDiscovery_All(t *testing.T) {
 			}
 
 			for _, g := range got {
-				w, ok := test.want[g.Name]
+				w, ok := test.want[g.Name()]
 				if !ok {
-					t.Errorf("Discovery.All() find want %v", g.Name)
+					t.Errorf("Discovery.All() find want %v", g.Name())
 				}
 				if !reflect.DeepEqual(g, w) {
 					t.Errorf("Discovery.All() got = %+v, want %+v", g, w)
 				}
 			}
-			// for i, g := range got {
-			// 	fmt.Println(g)
-			// 	fmt.Println(test.want[i])
-			// }
 		})
 	}
 }

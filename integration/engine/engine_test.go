@@ -90,9 +90,9 @@ func TestEngine_Query(t *testing.T) {
 			},
 			args: args{
 				ctx:   ctx,
-				query: "Could you recomend surfing in Sydney at the moment?",
+				query: "Could you recommend surfing in Sydney at the moment?",
 			},
-			want: "The weather in Sydney is 30 degrees and surfing is not recomented",
+			want: "The weather in Sydney is 30 degrees and surfing is not recommended.",
 		},
 	}
 

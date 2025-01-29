@@ -11,6 +11,8 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
+// HTTPTransport is a centralized mean for downstream request.
+// It takes care of request timeouts an traceID propagation.
 type HTTPTransporter struct {
 	client  http.Client
 	timeout time.Duration

@@ -16,7 +16,7 @@ func TraceID(span trace.Span) string {
 }
 
 func TraceIDFromCtx(ctx context.Context) string {
-	if spanContext := trace.SpanFromContext(ctx).SpanContext(); spanContext.IsValid() {
+	if spanContext := trace.SpanContextFromContext(ctx); spanContext.IsValid() {
 		return spanContext.TraceID().String()
 	}
 	return defaultTraceID

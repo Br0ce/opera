@@ -40,7 +40,7 @@ func (c *Client) Chat(ctx context.Context, msgs []message.Message, tt []tool.Too
 	c.log.Debug("execute chat request to openai",
 		"method", "Chat",
 		"lenMsgs", len(msgs),
-		"traceID", monitor.TraceID)
+		"traceID", monitor.TraceID(span))
 
 	chat, err := c.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Messages: openai.F(messages(msgs)),
@@ -61,12 +61,12 @@ func tools(tools []tool.Tool) []openai.ChatCompletionToolParam {
 			openai.ChatCompletionToolParam{
 				Type: openai.F(openai.ChatCompletionToolTypeFunction),
 				Function: openai.F(openai.FunctionDefinitionParam{
-					Name:        openai.String(tool.Name),
-					Description: openai.String(tool.Description),
+					Name:        openai.String(tool.Name()),
+					Description: openai.String(tool.Description()),
 					Parameters: openai.F(openai.FunctionParameters{
 						"type":       "object",
-						"properties": tool.Parameters.Properties,
-						"required":   tool.Parameters.Required,
+						"properties": tool.Parameters().Properties,
+						"required":   tool.Parameters().Required,
 					}),
 				}),
 			},
