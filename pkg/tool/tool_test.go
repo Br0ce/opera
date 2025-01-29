@@ -7,6 +7,8 @@ import (
 )
 
 func TestMakeTool(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		want    Tool
