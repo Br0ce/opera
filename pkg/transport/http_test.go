@@ -142,9 +142,20 @@ func TestHTTPTransportPostTimeout(t *testing.T) {
 func TestHTTPTransportPostTraceIDPropagation(t *testing.T) {
 	t.Parallel()
 
-	monitor.StartTestTracing(context.TODO(), false, "")
+	ctx := context.TODO()
+	shutdown, err := monitor.StartTestTracing(context.TODO(), false, "")
+	if err != nil {
+		t.Fatalf("start tracing: %s", err.Error())
+	}
+	defer func() {
+		err := shutdown(ctx)
+		if err != nil {
+			fmt.Printf("shut down open telemetry")
+		}
+	}()
+
 	tr := otel.Tracer("tester")
-	ctx, _ := tr.Start(context.TODO(), "propagationTest")
+	ctx, _ = tr.Start(context.TODO(), "propagationTest")
 
 	want := monitor.TraceIDFromCtx(ctx)
 
@@ -162,7 +173,7 @@ func TestHTTPTransportPostTraceIDPropagation(t *testing.T) {
 	defer srv.Close()
 
 	transport := NewHTTP(time.Second, monitor.NewTestLogger(false))
-	_, err := transport.Post(ctx, srv.URL, nil, nil)
+	_, err = transport.Post(ctx, srv.URL, nil, nil)
 	if err != nil {
 		t.Fatalf("transport: %s", err.Error())
 	}
@@ -281,9 +292,20 @@ func TestHTTPTransportGetTimeout(t *testing.T) {
 func TestHTTPTransportGetTraceIDPropagation(t *testing.T) {
 	t.Parallel()
 
-	monitor.StartTestTracing(context.TODO(), false, "")
+	ctx := context.TODO()
+	shutdown, err := monitor.StartTestTracing(context.TODO(), false, "")
+	if err != nil {
+		t.Fatalf("start tracing: %s", err.Error())
+	}
+	defer func() {
+		err := shutdown(ctx)
+		if err != nil {
+			fmt.Printf("shut down open telemetry")
+		}
+	}()
+
 	tr := otel.Tracer("tester")
-	ctx, _ := tr.Start(context.TODO(), "propagationTest")
+	ctx, _ = tr.Start(context.TODO(), "propagationTest")
 
 	want := monitor.TraceIDFromCtx(ctx)
 
@@ -301,7 +323,7 @@ func TestHTTPTransportGetTraceIDPropagation(t *testing.T) {
 	defer srv.Close()
 
 	transport := NewHTTP(time.Second, monitor.NewTestLogger(false))
-	_, err := transport.Get(ctx, srv.URL, nil)
+	_, err = transport.Get(ctx, srv.URL, nil)
 	if err != nil {
 		t.Fatalf("transport: %s", err.Error())
 	}
