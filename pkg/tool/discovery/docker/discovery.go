@@ -11,7 +11,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Br0ce/opera/pkg/monitor"
@@ -38,11 +37,11 @@ type Discovery struct {
 	log       *slog.Logger
 }
 
-func NewDiscovery(db tool.DB, transport Transporter, log *slog.Logger) *Discovery {
+func NewDiscovery(db tool.DB, transport Transporter, tracer trace.Tracer, log *slog.Logger) *Discovery {
 	return &Discovery{
 		db:        db,
 		transport: transport,
-		tr:        otel.Tracer("DockerDiscovery"),
+		tr:        tracer,
 		log:       log,
 	}
 }

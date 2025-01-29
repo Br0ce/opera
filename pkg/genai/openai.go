@@ -8,7 +8,6 @@ import (
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Br0ce/opera/pkg/action"
@@ -25,11 +24,11 @@ type Client struct {
 	log    *slog.Logger
 }
 
-func NewClient(token string, modelName string, log *slog.Logger) *Client {
+func NewClient(token string, modelName string, tracer trace.Tracer, log *slog.Logger) *Client {
 	return &Client{
 		client: openai.NewClient(option.WithAPIKey(token)),
 		model:  modelName,
-		tr:     otel.Tracer("OpenAIClient"),
+		tr:     tracer,
 		log:    log,
 	}
 }

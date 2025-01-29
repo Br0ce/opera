@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"sync"
 
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Br0ce/opera/pkg/monitor"
@@ -22,10 +21,10 @@ type Tool struct {
 	log   *slog.Logger
 }
 
-func NewDB(log *slog.Logger) *Tool {
+func NewDB(tracer trace.Tracer, log *slog.Logger) *Tool {
 	return &Tool{
 		tools: make(map[string]tool.Tool),
-		tr:    otel.Tracer("ToolDB"),
+		tr:    tracer,
 		log:   log,
 	}
 }

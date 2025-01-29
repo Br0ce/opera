@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Br0ce/opera/pkg/action"
@@ -26,7 +25,7 @@ type Agent struct {
 	log    *slog.Logger
 }
 
-func New(sysPrompt string, tools []tool.Tool, client Chatter, log *slog.Logger) *Agent {
+func New(sysPrompt string, tools []tool.Tool, client Chatter, tracer trace.Tracer, log *slog.Logger) *Agent {
 	return &Agent{
 		client: client,
 		msgs: []message.Message{{
@@ -39,7 +38,7 @@ func New(sysPrompt string, tools []tool.Tool, client Chatter, log *slog.Logger) 
 			},
 		}},
 		tools: tools,
-		tr:    otel.Tracer("Agent"),
+		tr:    tracer,
 		log:   log,
 	}
 }

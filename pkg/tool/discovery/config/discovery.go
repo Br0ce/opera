@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"os"
 
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Br0ce/opera/pkg/monitor"
@@ -22,7 +21,7 @@ type Discovery struct {
 	log *slog.Logger
 }
 
-func NewDiscovery(ctx context.Context, path string, db tool.DB, log *slog.Logger) (*Discovery, error) {
+func NewDiscovery(ctx context.Context, path string, db tool.DB, tracer trace.Tracer, log *slog.Logger) (*Discovery, error) {
 	items, err := readItems(path)
 	if err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
@@ -41,7 +40,7 @@ func NewDiscovery(ctx context.Context, path string, db tool.DB, log *slog.Logger
 
 	return &Discovery{
 		db:  db,
-		tr:  otel.Tracer("ConfigDiscovery"),
+		tr:  tracer,
 		log: log,
 	}, nil
 }

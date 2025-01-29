@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"go.opentelemetry.io/otel"
+
 	"github.com/Br0ce/opera/pkg/monitor"
 	"github.com/Br0ce/opera/pkg/tool"
 	"github.com/Br0ce/opera/pkg/tool/db/inmem"
@@ -15,6 +17,10 @@ import (
 )
 
 func TestDiscovery_All(t *testing.T) {
+	log := monitor.NewTestLogger(true)
+	discoveryTracer := otel.Tracer("DockerDiscovery")
+	dbTracer := otel.Tracer("ToolDB")
+
 	shark, err := tool.MakeTool(
 		tool.WithName("get_shark_warning"),
 		tool.WithDescription("Get current shark warning level for the location"),
@@ -49,6 +55,7 @@ func TestDiscovery_All(t *testing.T) {
 	if err != nil {
 		t.Fatalf("make shark tool: %s", err.Error())
 	}
+
 	tests := []struct {
 		name    string
 		ctx     context.Context
@@ -67,10 +74,9 @@ func TestDiscovery_All(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			log := monitor.NewTestLogger(true)
 			trans := transport.NewHTTP(time.Second*5, log)
-			db := inmem.NewDB(log)
-			di := docker.NewDiscovery(db, trans, log)
+			db := inmem.NewDB(dbTracer, log)
+			di := docker.NewDiscovery(db, trans, discoveryTracer, log)
 
 			got, err := di.All(test.ctx)
 			if (err != nil) != test.wantErr {

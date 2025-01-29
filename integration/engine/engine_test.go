@@ -57,11 +57,11 @@ func TestEngine_Query(t *testing.T) {
 	}()
 
 	log := monitor.NewTestLogger(true)
-	client := genai.NewClient(token, "gpt-4o", log)
-	db := inmem.NewDB(log)
+	client := genai.NewClient(token, "gpt-4o", otel.Tracer("OpenAIClient"), log)
+	db := inmem.NewDB(otel.Tracer("ToolDB"), log)
 	trans := transport.NewHTTP(time.Second*5, log)
-	discovery := docker.NewDiscovery(db, trans, log)
-	// discovery, err := config.NewDiscovery(ctx, "../../data/discovery/tools.json", db, log)
+	discovery := docker.NewDiscovery(db, trans, otel.Tracer("DockerDiscovery"), log)
+	// discovery, err := config.NewDiscovery(ctx, "../../data/discovery/tools.json", db, otel.Tracer("ConfigDiscovery"),log)
 	if err != nil {
 		t.Fatalf("new discovery: %s", err.Error())
 	}
@@ -69,9 +69,9 @@ func TestEngine_Query(t *testing.T) {
 	if err != nil {
 		t.Fatalf("find all tools: %s", err.Error())
 	}
-	agent := agent.New("You are a friendly assistent!", tools, client, log)
+	agent := agent.New("You are a friendly assistent!", tools, client, otel.Tracer("Agent"), log)
 	transporter := transport.NewHTTP(time.Second*30, log)
-	actor := action.NewActor(discovery, transporter, log)
+	actor := action.NewActor(discovery, transporter, otel.Tracer("Actor"), log)
 
 	tests := []struct {
 		name    string
