@@ -25,9 +25,9 @@ Observability is critical in such scenarios to understand system behavior, diagn
 
 Opera was born out of the need for an agent framework that goes beyond static configurations and manual integrations. By enabling dynamic discovery of tools and incorporating observability, Opera simplifies service orchestration and empowers developers to focus on building functionality rather than managing infrastructure.  
 
-## 🛠️ Getting Started  
+## 🛠️ Development
 
-Follow these steps to get started with Opera:  
+- [JaegerUI](http://localhost:16686)
 
 ### Prerequisites  
 - [Go](https://golang.org/) (version 1.22 or newer).  
