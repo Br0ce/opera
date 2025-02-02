@@ -16,33 +16,25 @@ import (
 var _ tool.Discovery = (*Discovery)(nil)
 
 type Discovery struct {
-	db  tool.DB
-	tr  trace.Tracer
-	log *slog.Logger
+	db   tool.DB
+	path string
+	tr   trace.Tracer
+	log  *slog.Logger
 }
 
 func NewDiscovery(ctx context.Context, path string, db tool.DB, tracer trace.Tracer, log *slog.Logger) (*Discovery, error) {
-	items, err := readItems(path)
+	di := &Discovery{
+		db:   db,
+		path: path,
+		tr:   tracer,
+		log:  log,
+	}
+	err := di.Refresh(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("read config: %w", err)
+		return nil, fmt.Errorf("refresh db: %w", err)
 	}
 
-	for _, item := range items {
-		tool, err := item.Decode()
-		if err != nil {
-			return nil, fmt.Errorf("decode tool %s: %w", item.Name, err)
-		}
-		err = db.Add(ctx, tool)
-		if err != nil {
-			return nil, fmt.Errorf("add tool: %w", err)
-		}
-	}
-
-	return &Discovery{
-		db:  db,
-		tr:  tracer,
-		log: log,
-	}, nil
+	return di, nil
 }
 
 func (di *Discovery) Get(ctx context.Context, name string) (tool.Tool, error) {
@@ -59,6 +51,35 @@ func (di *Discovery) All(ctx context.Context) ([]tool.Tool, error) {
 	di.log.Debug("get all tools", "method", "All", "traceID", monitor.TraceID(span))
 
 	return di.db.All(ctx)
+}
+
+func (di *Discovery) Refresh(ctx context.Context) error {
+	ctx, span := di.tr.Start(ctx, "refresh all tools")
+	defer span.End()
+	di.log.Debug("refresh all tools", "method", "Refresh", "traceID", monitor.TraceID(span))
+
+	items, err := readItems(di.path)
+	if err != nil {
+		return fmt.Errorf("read config: %w", err)
+	}
+
+	err = di.db.Clear(ctx)
+	if err != nil {
+		return fmt.Errorf("clear db: %w", err)
+	}
+
+	for _, item := range items {
+		tool, err := item.Decode()
+		if err != nil {
+			return fmt.Errorf("decode tool %s: %w", item.Name, err)
+		}
+		err = di.db.Add(ctx, tool)
+		if err != nil {
+			return fmt.Errorf("add tool: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func readItems(filename string) ([]Item, error) {

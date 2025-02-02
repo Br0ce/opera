@@ -76,7 +76,15 @@ func TestDiscovery_All(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			trans := transport.NewHTTP(time.Second*5, log)
 			db := inmem.NewDB(dbTracer, log)
-			di := docker.NewDiscovery(db, trans, discoveryTracer, log)
+			di, err := docker.NewDiscovery(db, trans, discoveryTracer, log)
+			if err != nil {
+				t.Fatalf("Discovery.All() new test discovery: %s", err.Error())
+			}
+
+			err = di.Refresh(test.ctx)
+			if err != nil {
+				t.Fatalf("Discovery.All() refresh: %s", err.Error())
+			}
 
 			got, err := di.All(test.ctx)
 			if (err != nil) != test.wantErr {
@@ -96,6 +104,92 @@ func TestDiscovery_All(t *testing.T) {
 				if !reflect.DeepEqual(g, w) {
 					t.Errorf("Discovery.All() got = %+v, want %+v", g, w)
 				}
+			}
+		})
+	}
+}
+
+func TestDiscovery_Get(t *testing.T) {
+	log := monitor.NewTestLogger(true)
+	discoveryTracer := otel.Tracer("DockerDiscovery")
+	dbTracer := otel.Tracer("ToolDB")
+
+	shark, err := tool.MakeTool(
+		tool.WithName("get_shark_warning"),
+		tool.WithDescription("Get current shark warning level for the location"),
+		tool.WithParameters(map[string]any{
+			"location": map[string]any{
+				"type": "string",
+			},
+		}, []string{"location"}),
+		tool.WithAddr(url.URL{
+			Scheme: "http",
+			Host:   "shark:8080",
+			Path:   "/",
+		}),
+	)
+	if err != nil {
+		t.Fatalf("make shark tool: %s", err.Error())
+	}
+	weather, err := tool.MakeTool(
+		tool.WithName("get_weather"),
+		tool.WithDescription("Get weather at the given location"),
+		tool.WithParameters(map[string]any{
+			"location": map[string]any{
+				"type": "string",
+			},
+		}, []string{"location"}),
+		tool.WithAddr(url.URL{
+			Scheme: "http",
+			Host:   "weather:8080",
+			Path:   "/",
+		}),
+	)
+	if err != nil {
+		t.Fatalf("make shark tool: %s", err.Error())
+	}
+
+	tests := []struct {
+		name    string
+		ctx     context.Context
+		want    tool.Tool
+		wantErr bool
+	}{
+		{
+			name:    "find shark",
+			ctx:     context.TODO(),
+			want:    shark,
+			wantErr: false,
+		},
+		{
+			name:    "find weather",
+			ctx:     context.TODO(),
+			want:    weather,
+			wantErr: false,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			trans := transport.NewHTTP(time.Second*5, log)
+			db := inmem.NewDB(dbTracer, log)
+			di, err := docker.NewDiscovery(db, trans, discoveryTracer, log)
+			if err != nil {
+				t.Fatalf("Discovery.All() new test discovery: %s", err.Error())
+			}
+
+			err = di.Refresh(test.ctx)
+			if err != nil {
+				t.Fatalf("Discovery.All() refresh: %s", err.Error())
+			}
+
+			got, err := di.Get(test.ctx, test.want.Name())
+			if (err != nil) != test.wantErr {
+				t.Errorf("Discovery.All() error = %v, wantErr %v", err, test.wantErr)
+				return
+			}
+
+			if !reflect.DeepEqual(got, test.want) {
+				t.Errorf("Discovery.All() got = %v, len want %v", got, test.want)
 			}
 		})
 	}
