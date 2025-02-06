@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
@@ -28,11 +27,11 @@ type Actor struct {
 	log       *slog.Logger
 }
 
-func NewActor(discovery tool.Discovery, transport Transporter, log *slog.Logger) *Actor {
+func NewActor(discovery tool.Discovery, transport Transporter, tracer trace.Tracer, log *slog.Logger) *Actor {
 	return &Actor{
 		discovery: discovery,
 		transport: transport,
-		tr:        otel.Tracer("Actor"),
+		tr:        tracer,
 		log:       log,
 	}
 }

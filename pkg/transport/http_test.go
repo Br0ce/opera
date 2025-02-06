@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 
 	"github.com/Br0ce/opera/pkg/monitor"
-	"go.opentelemetry.io/otel"
 )
 
 func TestHTTPTransportPost(t *testing.T) {

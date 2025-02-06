@@ -11,16 +11,11 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Br0ce/opera/pkg/monitor"
 	"github.com/Br0ce/opera/pkg/tool"
 )
-
-type Transporter interface {
-	Get(ctx context.Context, addr string, header map[string][]string) ([]byte, error)
-}
 
 const (
 	name = "com.github.Br0ce.opera.tool.name"
@@ -31,77 +26,116 @@ const (
 
 var _ tool.Discovery = (*Discovery)(nil)
 
+var (
+	errNotTool = errors.New("not a tool")
+)
+
+type Transporter interface {
+	Get(ctx context.Context, addr string, header map[string][]string) ([]byte, error)
+}
+
 type Discovery struct {
 	db        tool.DB
+	client    client.APIClient
 	transport Transporter
 	tr        trace.Tracer
 	log       *slog.Logger
 }
 
-func NewDiscovery(db tool.DB, transport Transporter, log *slog.Logger) *Discovery {
+func NewDiscovery(db tool.DB, transport Transporter, tracer trace.Tracer, log *slog.Logger) (*Discovery, error) {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, fmt.Errorf("new docker client: %w", err)
+	}
 	return &Discovery{
 		db:        db,
+		client:    cli,
 		transport: transport,
-		tr:        otel.Tracer("DockerDiscovery"),
+		tr:        tracer,
 		log:       log,
-	}
+	}, nil
 }
 
+// Get returns the Tool for the given name from the database.
 func (di *Discovery) Get(ctx context.Context, name string) (tool.Tool, error) {
 	ctx, span := di.tr.Start(ctx, "get tool")
 	defer span.End()
 	di.log.Debug("get tool", "method", "Get", "name", name, "traceID", monitor.TraceID(span))
 
-	return di.db.Get(ctx, name)
+	to, err := di.db.Get(ctx, name)
+	if err != nil {
+		return tool.Tool{}, fmt.Errorf("get tool %s: %w", name, err)
+	}
+
+	return to, nil
 }
 
+// All returns all Tools from the database.
 func (di *Discovery) All(ctx context.Context) ([]tool.Tool, error) {
 	ctx, span := di.tr.Start(ctx, "get all tools")
 	defer span.End()
 	di.log.Debug("get all tools", "method", "All", "traceID", monitor.TraceID(span))
 
-	err := di.collectTools(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("discover tools: %w", err)
-	}
-
 	tools, err := di.db.All(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get all tool from tool db: %w", err)
+		return nil, fmt.Errorf("get all: %w", err)
 	}
 
 	return tools, nil
 }
 
-func (di *Discovery) collectTools(ctx context.Context) error {
-	di.log.Debug("collect all tools", "method", "collectTools")
+// Refresh clears the database and adds any Tools found on the docker socket to the database.
+func (di *Discovery) Refresh(ctx context.Context) error {
+	ctx, span := di.tr.Start(ctx, "refresh tools")
+	defer span.End()
+	di.log.Debug("refresh all tools", "method", "refresh", "traceID", monitor.TraceID(span))
 
-	containers, err := containers(ctx)
+	err := di.db.Clear(ctx)
+	if err != nil {
+		return fmt.Errorf("clear db: %w", err)
+	}
+
+	conts, err := di.containers(ctx)
 	if err != nil {
 		return fmt.Errorf("list containers: %w", err)
 	}
 
-	errChan := make(chan error, len(containers))
+	errChan := make(chan error, len(conts))
 	defer close(errChan)
 
-	for _, container := range containers {
-		di.log.Debug("loop container", "method", "FindAll", "container ID", container.ID[:12], "imageTage", container.Image)
-		go di.addTool(ctx, container, errChan)
+	for _, cont := range conts {
+		di.log.Debug("loop containers", "method", "collectTools", "imageTag", cont.Image)
+		go func(ctx context.Context, cont types.Container) {
+			tool, err := di.toTool(ctx, cont)
+			if err != nil {
+				if errors.Is(err, errNotTool) {
+					errChan <- nil
+					return
+				}
+				errChan <- fmt.Errorf("create tool from container %s: %w", cont.Image, err)
+				return
+			}
+			err = di.db.Add(ctx, tool)
+			if err != nil {
+				errChan <- fmt.Errorf("add tool: %w", err)
+				return
+			}
+
+			errChan <- nil
+		}(ctx, cont)
 	}
 
 	var addErr error
-	for range len(containers) {
-		err = <-errChan
-		addErr = errors.Join(addErr, err)
+	for range len(conts) {
+		addErr = errors.Join(addErr, <-errChan)
 	}
 
 	return addErr
 }
 
-func (di *Discovery) addTool(ctx context.Context, container types.Container, errChan chan error) {
-	di.log.Debug("check if container is a tool and add to db",
-		"method", "addTool",
-		"containerImage", container.Image)
+// toTool returns a Tool for the given container. If the container is not a Tool an ErrNotTool is returned.
+func (di *Discovery) toTool(ctx context.Context, container types.Container) (tool.Tool, error) {
+	di.log.Debug("get tool for container", "method", "toTool", "containerImage", container.Image)
 
 	tName, okName := container.Labels[name]
 	tHost, okHost := container.Labels[host]
@@ -109,15 +143,10 @@ func (di *Discovery) addTool(ctx context.Context, container types.Container, err
 	tPath, okPath := container.Labels[path]
 
 	if !(okName && okHost && okPort && okPath) {
-		errChan <- nil
-		return
+		return tool.Tool{}, errNotTool
 	}
 
-	di.log.Debug("found tool container",
-		"method", "addTool",
-		"containerID", container.ID[:12],
-		"imageTage", container.Image)
-
+	di.log.Debug("found tool container", "method", "addTool")
 	addr := url.URL{
 		Scheme: "http",
 		Host:   fmt.Sprintf("%s:%s", tHost, tPort),
@@ -126,30 +155,23 @@ func (di *Discovery) addTool(ctx context.Context, container types.Container, err
 
 	cfg, err := di.config(ctx, addr)
 	if err != nil {
-		errChan <- fmt.Errorf("get description: %w", err)
-		return
+		return tool.Tool{}, fmt.Errorf("get config: %w", err)
 	}
 
-	tool, err := tool.MakeTool(
+	result, err := tool.MakeTool(
 		tool.WithName(tName),
 		tool.WithAddr(addr),
 		tool.WithDescription(cfg.Description),
 		tool.WithParameters(cfg.Properties, cfg.Required),
 	)
 	if err != nil {
-		errChan <- fmt.Errorf("make tool: %w", err)
-		return
+		return tool.Tool{}, fmt.Errorf("make tool: %w", err)
 	}
 
-	err = di.db.Add(ctx, tool)
-	if err != nil {
-		errChan <- fmt.Errorf("add tool: %w", err)
-		return
-	}
-
-	errChan <- nil
+	return result, nil
 }
 
+// config performs a get request to the config endpoint of the given addr and returns the response as a config.
 func (di *Discovery) config(ctx context.Context, addr url.URL) (config, error) {
 	ctx, span := di.tr.Start(ctx, "get config")
 	defer span.End()
@@ -169,14 +191,11 @@ func (di *Discovery) config(ctx context.Context, addr url.URL) (config, error) {
 	return cfg, nil
 }
 
-func containers(ctx context.Context) ([]types.Container, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, fmt.Errorf("new docker client: %w", err)
-	}
-	defer cli.Close()
+// containers returns all containers found on the docker socket.
+func (di *Discovery) containers(ctx context.Context) ([]types.Container, error) {
+	defer di.client.Close()
 
-	containers, err := cli.ContainerList(ctx, container.ListOptions{All: false})
+	containers, err := di.client.ContainerList(ctx, container.ListOptions{All: false})
 	if err != nil {
 		return nil, fmt.Errorf("list containers: %w", err)
 	}

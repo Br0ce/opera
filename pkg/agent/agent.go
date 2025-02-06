@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Br0ce/opera/pkg/action"
@@ -19,14 +18,14 @@ type Chatter interface {
 }
 
 type Agent struct {
-	client Chatter
-	msgs   []message.Message
-	tools  []tool.Tool
-	tr     trace.Tracer
-	log    *slog.Logger
+	client    Chatter
+	msgs      []message.Message
+	discovery tool.Discovery
+	tr        trace.Tracer
+	log       *slog.Logger
 }
 
-func New(sysPrompt string, tools []tool.Tool, client Chatter, log *slog.Logger) *Agent {
+func New(sysPrompt string, discovery tool.Discovery, client Chatter, tracer trace.Tracer, log *slog.Logger) *Agent {
 	return &Agent{
 		client: client,
 		msgs: []message.Message{{
@@ -38,21 +37,29 @@ func New(sysPrompt string, tools []tool.Tool, client Chatter, log *slog.Logger) 
 				},
 			},
 		}},
-		tools: tools,
-		tr:    otel.Tracer("Agent"),
-		log:   log,
+		discovery: discovery,
+		tr:        tracer,
+		log:       log,
 	}
 }
 
 // Action returns, based on the given perceptions and the history of prior perceptions an
-// action which shoud be executed.
+// action which can be executed.
 func (ag *Agent) Action(ctx context.Context, percepts []percept.Percept) (action.Action, error) {
 	ctx, span := ag.tr.Start(ctx, "Action")
 	defer span.End()
 
-	ag.msgs = append(ag.msgs, messages(percepts)...)
+	err := ag.discovery.Refresh(ctx)
+	if err != nil {
+		return action.Action{}, fmt.Errorf("refresh discovery: %w", err)
+	}
+	tools, err := ag.discovery.All(ctx)
+	if err != nil {
+		return action.Action{}, fmt.Errorf("get all available tools: %w", err)
+	}
 
-	answer, err := ag.client.Chat(ctx, ag.msgs, ag.tools)
+	ag.msgs = append(ag.msgs, messages(percepts)...)
+	answer, err := ag.client.Chat(ctx, ag.msgs, tools)
 	if err != nil {
 		return action.Action{}, fmt.Errorf("chat: %w", err)
 	}
