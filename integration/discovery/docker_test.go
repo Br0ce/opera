@@ -19,7 +19,6 @@ import (
 func TestDiscovery_All(t *testing.T) {
 	log := monitor.NewTestLogger(true)
 	discoveryTracer := otel.Tracer("DockerDiscovery")
-	dbTracer := otel.Tracer("ToolDB")
 
 	shark, err := tool.MakeTool(
 		tool.WithName("get_shark_warning"),
@@ -75,8 +74,7 @@ func TestDiscovery_All(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			trans := transport.NewHTTP(time.Second*5, log)
-			db := inmem.NewDB(dbTracer, log)
-			di, err := docker.NewDiscovery(db, trans, discoveryTracer, log)
+			di, err := docker.NewDiscovery(inmem.NewDB(), trans, discoveryTracer, log)
 			if err != nil {
 				t.Fatalf("Discovery.All() new test discovery: %s", err.Error())
 			}
@@ -112,7 +110,6 @@ func TestDiscovery_All(t *testing.T) {
 func TestDiscovery_Get(t *testing.T) {
 	log := monitor.NewTestLogger(true)
 	discoveryTracer := otel.Tracer("DockerDiscovery")
-	dbTracer := otel.Tracer("ToolDB")
 
 	shark, err := tool.MakeTool(
 		tool.WithName("get_shark_warning"),
@@ -171,8 +168,7 @@ func TestDiscovery_Get(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			trans := transport.NewHTTP(time.Second*5, log)
-			db := inmem.NewDB(dbTracer, log)
-			di, err := docker.NewDiscovery(db, trans, discoveryTracer, log)
+			di, err := docker.NewDiscovery(inmem.NewDB(), trans, discoveryTracer, log)
 			if err != nil {
 				t.Fatalf("Discovery.All() new test discovery: %s", err.Error())
 			}
