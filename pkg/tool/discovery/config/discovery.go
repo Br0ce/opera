@@ -38,23 +38,26 @@ func NewDiscovery(ctx context.Context, path string, db tool.DB, tracer trace.Tra
 }
 
 func (di *Discovery) Get(ctx context.Context, name string) (tool.Tool, error) {
-	ctx, span := di.tr.Start(ctx, "get tool")
+	_, span := di.tr.Start(ctx, "get tool")
 	defer span.End()
 	di.log.Debug("get tool", "method", "Get", "name", name, "traceID", monitor.TraceID(span))
-
-	return di.db.Get(ctx, name)
+	return di.db.Get(name)
 }
 
-func (di *Discovery) All(ctx context.Context) ([]tool.Tool, error) {
-	ctx, span := di.tr.Start(ctx, "get all tools")
+func (di *Discovery) All(ctx context.Context) []tool.Tool {
+	_, span := di.tr.Start(ctx, "get all tools")
 	defer span.End()
 	di.log.Debug("get all tools", "method", "All", "traceID", monitor.TraceID(span))
 
-	return di.db.All(ctx)
+	var tt []tool.Tool
+	for t := range di.db.All() {
+		tt = append(tt, t)
+	}
+	return tt
 }
 
 func (di *Discovery) Refresh(ctx context.Context) error {
-	ctx, span := di.tr.Start(ctx, "refresh all tools")
+	_, span := di.tr.Start(ctx, "refresh all tools")
 	defer span.End()
 	di.log.Debug("refresh all tools", "method", "Refresh", "traceID", monitor.TraceID(span))
 
@@ -63,22 +66,17 @@ func (di *Discovery) Refresh(ctx context.Context) error {
 		return fmt.Errorf("read config: %w", err)
 	}
 
-	err = di.db.Clear(ctx)
-	if err != nil {
-		return fmt.Errorf("clear db: %w", err)
-	}
-
+	di.db.Clear()
 	for _, item := range items {
 		tool, err := item.Decode()
 		if err != nil {
 			return fmt.Errorf("decode tool %s: %w", item.Name, err)
 		}
-		err = di.db.Add(ctx, tool)
+		err = di.db.Add(tool)
 		if err != nil {
 			return fmt.Errorf("add tool: %w", err)
 		}
 	}
-
 	return nil
 }
 

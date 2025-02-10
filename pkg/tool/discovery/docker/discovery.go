@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"slices"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -58,42 +59,32 @@ func NewDiscovery(db tool.DB, transport Transporter, tracer trace.Tracer, log *s
 
 // Get returns the Tool for the given name from the database.
 func (di *Discovery) Get(ctx context.Context, name string) (tool.Tool, error) {
-	ctx, span := di.tr.Start(ctx, "get tool")
+	_, span := di.tr.Start(ctx, "get tool")
 	defer span.End()
 	di.log.Debug("get tool", "method", "Get", "name", name, "traceID", monitor.TraceID(span))
 
-	to, err := di.db.Get(ctx, name)
+	to, err := di.db.Get(name)
 	if err != nil {
 		return tool.Tool{}, fmt.Errorf("get tool %s: %w", name, err)
 	}
-
 	return to, nil
 }
 
 // All returns all Tools from the database.
-func (di *Discovery) All(ctx context.Context) ([]tool.Tool, error) {
-	ctx, span := di.tr.Start(ctx, "get all tools")
+func (di *Discovery) All(ctx context.Context) []tool.Tool {
+	_, span := di.tr.Start(ctx, "get all tools")
 	defer span.End()
 	di.log.Debug("get all tools", "method", "All", "traceID", monitor.TraceID(span))
 
-	tools, err := di.db.All(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("get all: %w", err)
-	}
-
-	return tools, nil
+	return slices.Collect(di.db.All())
 }
 
 // Refresh clears the database and adds any Tools found on the docker socket to the database.
+// To set a timeout use the ctx.
 func (di *Discovery) Refresh(ctx context.Context) error {
 	ctx, span := di.tr.Start(ctx, "refresh tools")
 	defer span.End()
 	di.log.Debug("refresh all tools", "method", "refresh", "traceID", monitor.TraceID(span))
-
-	err := di.db.Clear(ctx)
-	if err != nil {
-		return fmt.Errorf("clear db: %w", err)
-	}
 
 	conts, err := di.containers(ctx)
 	if err != nil {
@@ -103,8 +94,9 @@ func (di *Discovery) Refresh(ctx context.Context) error {
 	errChan := make(chan error, len(conts))
 	defer close(errChan)
 
+	di.db.Clear()
 	for _, cont := range conts {
-		di.log.Debug("loop containers", "method", "collectTools", "imageTag", cont.Image)
+		di.log.Debug("loop containers", "method", "Refresh", "imageTag", cont.Image)
 		go func(ctx context.Context, cont types.Container) {
 			tool, err := di.toTool(ctx, cont)
 			if err != nil {
@@ -115,7 +107,7 @@ func (di *Discovery) Refresh(ctx context.Context) error {
 				errChan <- fmt.Errorf("create tool from container %s: %w", cont.Image, err)
 				return
 			}
-			err = di.db.Add(ctx, tool)
+			err = di.db.Add(tool)
 			if err != nil {
 				errChan <- fmt.Errorf("add tool: %w", err)
 				return
@@ -129,7 +121,6 @@ func (di *Discovery) Refresh(ctx context.Context) error {
 	for range len(conts) {
 		addErr = errors.Join(addErr, <-errChan)
 	}
-
 	return addErr
 }
 
@@ -141,7 +132,6 @@ func (di *Discovery) toTool(ctx context.Context, container types.Container) (too
 	tHost, okHost := container.Labels[host]
 	tPort, okPort := container.Labels[port]
 	tPath, okPath := container.Labels[path]
-
 	if !(okName && okHost && okPort && okPath) {
 		return tool.Tool{}, errNotTool
 	}
@@ -167,7 +157,6 @@ func (di *Discovery) toTool(ctx context.Context, container types.Container) (too
 	if err != nil {
 		return tool.Tool{}, fmt.Errorf("make tool: %w", err)
 	}
-
 	return result, nil
 }
 
@@ -187,14 +176,12 @@ func (di *Discovery) config(ctx context.Context, addr url.URL) (config, error) {
 	if err != nil {
 		return config{}, fmt.Errorf("unmarshal config: %w", err)
 	}
-
 	return cfg, nil
 }
 
 // containers returns all containers found on the docker socket.
 func (di *Discovery) containers(ctx context.Context) ([]types.Container, error) {
 	defer di.client.Close()
-
 	containers, err := di.client.ContainerList(ctx, container.ListOptions{All: false})
 	if err != nil {
 		return nil, fmt.Errorf("list containers: %w", err)

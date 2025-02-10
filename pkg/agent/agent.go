@@ -53,10 +53,7 @@ func (ag *Agent) Action(ctx context.Context, percepts []percept.Percept) (action
 	if err != nil {
 		return action.Action{}, fmt.Errorf("refresh discovery: %w", err)
 	}
-	tools, err := ag.discovery.All(ctx)
-	if err != nil {
-		return action.Action{}, fmt.Errorf("get all available tools: %w", err)
-	}
+	tools := ag.discovery.All(ctx)
 
 	ag.msgs = append(ag.msgs, messages(percepts)...)
 	answer, err := ag.client.Chat(ctx, ag.msgs, tools)

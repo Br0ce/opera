@@ -1,7 +1,7 @@
 package inmem
 
 import (
-	"context"
+	"iter"
 	"sync"
 
 	"github.com/Br0ce/opera/pkg/tool"
@@ -18,7 +18,9 @@ func NewDB() *Tool {
 	return &Tool{}
 }
 
-func (to *Tool) Add(ctx context.Context, tool tool.Tool) error {
+// Add stores the tool and can be retrieved with tool name.
+// If a tool with the same name is already stored, a db.ErrAlreadyExists is returned.
+func (to *Tool) Add(tool tool.Tool) error {
 	_, ok := to.tools.LoadOrStore(tool.Name(), tool)
 	if ok {
 		return db.ErrAlreadyExists
@@ -26,11 +28,12 @@ func (to *Tool) Add(ctx context.Context, tool tool.Tool) error {
 	return nil
 }
 
-func (to *Tool) Get(ctx context.Context, name string) (tool.Tool, error) {
+// Get returns the tool stored for the given name.
+// If no tool if found for the given name, a db.ErrNotFound is returned.
+func (to *Tool) Get(name string) (tool.Tool, error) {
 	if name == "" {
 		return tool.Tool{}, db.ErrInvalidName
 	}
-
 	v, ok := to.tools.Load(name)
 	if !ok {
 		return tool.Tool{}, db.ErrNotFound
@@ -38,32 +41,25 @@ func (to *Tool) Get(ctx context.Context, name string) (tool.Tool, error) {
 
 	t, ok := v.(tool.Tool)
 	if !ok {
+		// This should not happen.
 		return tool.Tool{}, db.ErrInternal
 	}
 	return t, nil
 }
 
-func (to *Tool) All(ctx context.Context) ([]tool.Tool, error) {
-	all := true
-	var tt []tool.Tool
-	to.tools.Range(func(_, value any) bool {
-		t, ok := value.(tool.Tool)
-		if !ok {
-			all = false
-			return false
-		}
-
-		tt = append(tt, t)
-		return true
-	})
-
-	if !all {
-		return nil, db.ErrInternal
+// All returns a tool.Tool iterator.
+func (to *Tool) All() iter.Seq[tool.Tool] {
+	return func(yield func(tool.Tool) bool) {
+		to.tools.Range(func(_, value any) bool {
+			if t, ok := value.(tool.Tool); ok {
+				return yield(t)
+			}
+			return true
+		})
 	}
-	return tt, nil
 }
 
-func (to *Tool) Clear(ctx context.Context) error {
+// Clear deletes all tool.Tool entries.
+func (to *Tool) Clear() {
 	to.tools.Clear()
-	return nil
 }

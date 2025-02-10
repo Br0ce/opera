@@ -56,10 +56,9 @@ func TestDiscovery_All(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		ctx     context.Context
-		want    map[string]tool.Tool
-		wantErr bool
+		name string
+		ctx  context.Context
+		want map[string]tool.Tool
 	}{
 		{
 			name: "find both dev tool services",
@@ -68,7 +67,6 @@ func TestDiscovery_All(t *testing.T) {
 				"get_shark_warning": shark,
 				"get_weather":       weather,
 			},
-			wantErr: false,
 		},
 	}
 	for _, test := range tests {
@@ -84,12 +82,7 @@ func TestDiscovery_All(t *testing.T) {
 				t.Fatalf("Discovery.All() refresh: %s", err.Error())
 			}
 
-			got, err := di.All(test.ctx)
-			if (err != nil) != test.wantErr {
-				t.Errorf("Discovery.All() error = %v, wantErr %v", err, test.wantErr)
-				return
-			}
-
+			got := di.All(test.ctx)
 			if len(got) != len(test.want) {
 				t.Errorf("Discovery.All() len got = %v, len want %v", len(got), len(test.want))
 			}
