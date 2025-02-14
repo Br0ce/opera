@@ -1,59 +1,46 @@
 package percept
 
-const (
-	user      = "user"
-	tool      = "tool"
-	TextType  = "text"
-	ImageType = "image"
+import (
+	"github.com/Br0ce/opera/pkg/tool"
+	"github.com/Br0ce/opera/pkg/user"
 )
 
+// Percept is a standardized container for all possible inputs to an agent.
+// Perceptions can be of type user or of type tool.
+// A user perception represent usually the initial question to the agent. Tool
+// perceptions hold the response of a tool call.
 type Percept struct {
-	pType string
-	user  User
-	tool  Tool
+	user *user.Query
+	tool *tool.Response
 }
 
-type User struct {
-	Type     string
-	Text     string
-	ImageUrl string
-}
-
-type Tool struct {
-	ID      string
-	Content string
-}
-
-func MakeTextUser(content string) Percept {
+func MakeUser(query user.Query) Percept {
 	return Percept{
-		pType: user,
-		user: User{
-			Type: TextType,
-			Text: content,
-		},
+		user: &query,
 	}
 }
 
 func MakeTool(callID string, content string) Percept {
 	return Percept{
-		pType: tool,
-		tool: Tool{
+		tool: &tool.Response{
 			ID:      callID,
 			Content: content,
 		},
 	}
 }
 
-func (p Percept) User() ([]User, bool) {
-	if p.pType != user {
-		return nil, false
+// User reports if the percept is of type user. If true the user.Query is returned.
+func (p Percept) User() (user.Query, bool) {
+	if p.user == nil {
+		return user.Query{}, false
 	}
-	return []User{p.user}, true
+	return *p.user, true
 }
 
-func (p Percept) Tool() (Tool, bool) {
-	if p.pType != tool {
-		return Tool{}, false
+// Tool reports if the percept is of type tool. If true the tool.Response is returned.
+func (p Percept) Tool() (tool.Response, bool) {
+	if p.tool == nil {
+		return tool.Response{}, false
 	}
-	return p.tool, true
+	return *p.tool, true
 }

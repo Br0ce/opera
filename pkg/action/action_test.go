@@ -3,6 +3,8 @@ package action
 import (
 	"reflect"
 	"testing"
+
+	"github.com/Br0ce/opera/pkg/tool"
 )
 
 func TestMakeUser(t *testing.T) {
@@ -17,16 +19,14 @@ func TestMakeUser(t *testing.T) {
 			name:    "pass",
 			content: "The weather is fine today",
 			want: Action{
-				aType: forUser,
-				user:  "The weather is fine today",
+				user: "The weather is fine today",
 			},
 		},
 		{
 			name:    "empty content",
 			content: "",
 			want: Action{
-				aType: forUser,
-				user:  "",
+				user: "",
 			},
 		},
 	}
@@ -45,19 +45,18 @@ func TestMakeTool(t *testing.T) {
 
 	tests := []struct {
 		name  string
-		calls []Call
+		calls []tool.Call
 		want  Action
 	}{
 		{
 			name: "pass",
-			calls: []Call{{
+			calls: []tool.Call{{
 				ID:        "123",
 				Name:      "get_weather",
 				Arguments: "this is a JSON string",
 			}},
 			want: Action{
-				aType: forTool,
-				tool: []Call{{
+				tool: []tool.Call{{
 					ID:        "123",
 					Name:      "get_weather",
 					Arguments: "this is a JSON string",
@@ -66,7 +65,7 @@ func TestMakeTool(t *testing.T) {
 		},
 		{
 			name: "two calls",
-			calls: []Call{{
+			calls: []tool.Call{{
 				ID:        "123",
 				Name:      "get_weather",
 				Arguments: "this is a JSON string",
@@ -78,8 +77,7 @@ func TestMakeTool(t *testing.T) {
 				},
 			},
 			want: Action{
-				aType: forTool,
-				tool: []Call{{
+				tool: []tool.Call{{
 					ID:        "123",
 					Name:      "get_weather",
 					Arguments: "this is a JSON string",
@@ -105,39 +103,31 @@ func TestMakeTool(t *testing.T) {
 func TestAction_User(t *testing.T) {
 	t.Parallel()
 
-	type fields struct {
-		aType string
-		user  string
-	}
 	tests := []struct {
-		name   string
-		fields fields
-		want   string
-		ok     bool
+		name    string
+		content string
+		tool    []tool.Call
+		want    string
+		ok      bool
 	}{
 		{
-			name: "user",
-			fields: fields{
-				aType: forUser,
-				user:  "this is some content",
-			},
-			want: "this is some content",
-			ok:   true,
+			name:    "user",
+			content: "this is some content",
+			want:    "this is some content",
+			tool:    nil,
+			ok:      true,
 		},
 		{
 			name: "tool",
-			fields: fields{
-				aType: forTool,
-			},
-			want: "",
+			tool: []tool.Call{},
 			ok:   false,
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			a := Action{
-				aType: test.fields.aType,
-				user:  test.fields.user,
+				user: test.content,
+				tool: test.tool,
 			}
 			got, ok := a.User()
 			if got != test.want {
@@ -154,26 +144,24 @@ func TestAction_Tool(t *testing.T) {
 	t.Parallel()
 
 	type fields struct {
-		aType string
-		tool  []Call
+		tool []tool.Call
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		want   []Call
+		want   []tool.Call
 		ok     bool
 	}{
 		{
 			name: "tool",
 			fields: fields{
-				aType: forTool,
-				tool: []Call{{
+				tool: []tool.Call{{
 					ID:        "1234",
 					Name:      "MyFunc",
 					Arguments: "json",
 				}},
 			},
-			want: []Call{{
+			want: []tool.Call{{
 				ID:        "1234",
 				Name:      "MyFunc",
 				Arguments: "json",
@@ -181,19 +169,16 @@ func TestAction_Tool(t *testing.T) {
 			ok: true,
 		},
 		{
-			name: "user",
-			fields: fields{
-				aType: forUser,
-			},
-			want: nil,
-			ok:   false,
+			name:   "user",
+			fields: fields{},
+			want:   nil,
+			ok:     false,
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			a := Action{
-				aType: test.fields.aType,
-				tool:  test.fields.tool,
+				tool: test.fields.tool,
 			}
 			got, ok := a.Tool()
 			if !reflect.DeepEqual(got, test.want) {

@@ -5,23 +5,22 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
 	"go.opentelemetry.io/otel"
 
+	"github.com/Br0ce/opera/integration/assert"
 	"github.com/Br0ce/opera/pkg/action"
 	"github.com/Br0ce/opera/pkg/agent"
 	"github.com/Br0ce/opera/pkg/engine"
-	"github.com/Br0ce/opera/pkg/genai"
+	"github.com/Br0ce/opera/pkg/generate/openai"
 	"github.com/Br0ce/opera/pkg/monitor"
 	"github.com/Br0ce/opera/pkg/tool/db/inmem"
 	"github.com/Br0ce/opera/pkg/tool/discovery/docker"
 	"github.com/Br0ce/opera/pkg/transport"
+	"github.com/Br0ce/opera/pkg/user"
 )
 
 func TestEngine_Query(t *testing.T) {
@@ -41,7 +40,7 @@ func TestEngine_Query(t *testing.T) {
 	}
 	type args struct {
 		ctx   context.Context
-		query string
+		query user.Query
 	}
 
 	ctx := context.TODO()
@@ -57,14 +56,14 @@ func TestEngine_Query(t *testing.T) {
 	}()
 
 	log := monitor.NewTestLogger(true)
-	client := genai.NewClient(token, "gpt-4o", otel.Tracer("OpenAIClient"), log)
+	generator := openai.NewGenerator(token, "gpt-4o", otel.Tracer("Generator"), log)
 	trans := transport.NewHTTP(time.Second*5, log)
 	discovery, err := docker.NewDiscovery(inmem.NewDB(), trans, otel.Tracer("DockerDiscovery"), log)
 	// discovery, err := config.NewDiscovery(ctx, "../../data/discovery/tools.json", db, otel.Tracer("ConfigDiscovery"), log)
 	if err != nil {
 		t.Fatalf("new discovery: %s", err.Error())
 	}
-	agent := agent.New("You are a  friendly assistent!", discovery, client, otel.Tracer("Agent"), log)
+	agent := agent.New("You are a  friendly assistent!", discovery, generator, otel.Tracer("Agent"), log)
 	transporter := transport.NewHTTP(time.Second*30, log)
 	actor := action.NewActor(discovery, transporter, otel.Tracer("Actor"), log)
 
@@ -85,7 +84,7 @@ func TestEngine_Query(t *testing.T) {
 			},
 			args: args{
 				ctx:   ctx,
-				query: "Could you recommend surfing in Sydney at the moment?",
+				query: user.Query{Text: "Could you recommend surfing in Sydney at the moment?"},
 			},
 			want: "The weather in Sydney is 30 degrees and surfing is not recommended.",
 		},
@@ -105,7 +104,7 @@ func TestEngine_Query(t *testing.T) {
 				t.Errorf("Engine.Query() error = %v, wantErr %v", err, test.wantErr)
 				return
 			}
-			ok, err := valid(got, test.want, token)
+			ok, err := assert.True(got, test.want, token)
 			if err != nil {
 				t.Fatalf("validate response: %s", err.Error())
 			}
@@ -115,26 +114,4 @@ func TestEngine_Query(t *testing.T) {
 			}
 		})
 	}
-}
-
-func valid(test, groundTruth, token string) (bool, error) {
-	var msgs []openai.ChatCompletionMessageParamUnion
-	msg := fmt.Sprintf("Given this ground truth: %s\n Judge if this statement is valid: %s\n Just respond with true of false.", groundTruth, test)
-	msgs = append(msgs, openai.SystemMessage("Your job is to make a fair decision."))
-	msgs = append(msgs, openai.UserMessage(msg))
-
-	cl := openai.NewClient(option.WithAPIKey(token))
-	res, err := cl.Chat.Completions.New(context.TODO(), openai.ChatCompletionNewParams{
-		Messages: openai.F(msgs),
-		Model:    openai.F("gpt-4o"),
-	})
-	if err != nil {
-		return false, fmt.Errorf("completion request: %w", err)
-	}
-	judgment, err := strconv.ParseBool(res.Choices[0].Message.Content)
-	if err != nil {
-		return false, fmt.Errorf("parse response: %w", err)
-	}
-
-	return judgment, nil
 }

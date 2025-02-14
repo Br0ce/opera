@@ -38,9 +38,14 @@ func NewActor(discovery tool.Discovery, transport Transporter, tracer trace.Trac
 
 // Act executes all given tool calls concurrently and returns their results as a slice
 // of perceptions.
-func (ac *Actor) Act(ctx context.Context, calls []Call) ([]percept.Percept, error) {
+func (ac *Actor) Act(ctx context.Context, action Action) ([]percept.Percept, error) {
 	ctx, span := ac.tr.Start(ctx, "Act on calls")
 	defer span.End()
+
+	calls, ok := action.Tool()
+	if !ok {
+		return nil, fmt.Errorf("action is not of type tool")
+	}
 
 	callNum := len(calls)
 	results := make([]percept.Percept, 0, callNum)
@@ -54,7 +59,7 @@ func (ac *Actor) Act(ctx context.Context, calls []Call) ([]percept.Percept, erro
 	for i, call := range calls {
 		ac.log.Debug("iterate tool calls", "method", "Act", "num", i, "traceID", monitor.TraceID(span))
 
-		go func(ctx context.Context, call Call) {
+		go func(ctx context.Context, call tool.Call) {
 			percept, err := ac.act(ctx, call)
 			if err != nil {
 				errChan <- fmt.Errorf("act on tool call %s: %w", call.Name, err)
@@ -82,7 +87,7 @@ func (ac *Actor) Act(ctx context.Context, calls []Call) ([]percept.Percept, erro
 }
 
 // act execute the call to the tool service and returns the result as a perception.
-func (ac *Actor) act(ctx context.Context, call Call) (percept.Percept, error) {
+func (ac *Actor) act(ctx context.Context, call tool.Call) (percept.Percept, error) {
 	ctx, span := ac.tr.Start(ctx, "execute call")
 	defer span.End()
 	ac.log.Debug("execute call to the tool service",
