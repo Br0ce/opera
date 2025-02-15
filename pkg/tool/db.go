@@ -1,12 +1,12 @@
 package tool
 
 import (
-	"context"
+	"iter"
 )
 
 type DB interface {
-	Add(ctx context.Context, tool Tool) error
-	Get(ctx context.Context, name string) (Tool, error)
-	All(ctx context.Context) ([]Tool, error)
-	Clear(ctx context.Context) error
+	Add(tool Tool) error
+	Get(name string) (Tool, error)
+	All() iter.Seq[Tool]
+	Clear()
 }

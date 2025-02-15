@@ -1,7 +1,7 @@
 package mock
 
 import (
-	"context"
+	"iter"
 	"sync"
 
 	"github.com/Br0ce/opera/pkg/tool"
@@ -10,42 +10,40 @@ import (
 var _ tool.DB = (*ToolDB)(nil)
 
 type ToolDB struct {
-	AddFn        func(ctx context.Context, tool tool.Tool) error
+	AddFn        func(tool tool.Tool) error
 	AddInvoked   bool
-	GetFn        func(ctx context.Context, name string) (tool.Tool, error)
+	GetFn        func(name string) (tool.Tool, error)
 	GetInvoked   bool
-	AllFn        func(ctx context.Context) ([]tool.Tool, error)
+	AllFn        func() iter.Seq[tool.Tool]
 	AllInvoked   bool
-	ClearFn      func(ctx context.Context) error
 	ClearInvoked bool
 	mu           sync.Mutex
 }
 
-func (t *ToolDB) Add(ctx context.Context, tool tool.Tool) error {
+func (t *ToolDB) Add(tool tool.Tool) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	t.AddInvoked = true
-	return t.AddFn(ctx, tool)
+	return t.AddFn(tool)
 }
 
-func (t *ToolDB) Get(ctx context.Context, name string) (tool.Tool, error) {
+func (t *ToolDB) Get(name string) (tool.Tool, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	t.GetInvoked = true
-	return t.GetFn(ctx, name)
+	return t.GetFn(name)
 }
 
-func (t *ToolDB) All(ctx context.Context) ([]tool.Tool, error) {
+func (t *ToolDB) All() iter.Seq[tool.Tool] {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	t.AllInvoked = true
-	return t.AllFn(ctx)
+	return t.AllFn()
 }
 
-func (t *ToolDB) Clear(ctx context.Context) error {
+func (t *ToolDB) Clear() {
 	t.ClearInvoked = true
-	return t.ClearFn(ctx)
 }

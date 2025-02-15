@@ -10,6 +10,7 @@ import (
 	"github.com/Br0ce/opera/pkg/action"
 	"github.com/Br0ce/opera/pkg/agent"
 	"github.com/Br0ce/opera/pkg/percept"
+	"github.com/Br0ce/opera/pkg/user"
 )
 
 type Engine struct {
@@ -20,36 +21,30 @@ type Engine struct {
 	Log     *slog.Logger
 }
 
-func (eg *Engine) Query(ctx context.Context, query string) (string, error) {
+func (eg *Engine) Query(ctx context.Context, query user.Query) (string, error) {
 	ctx, span := eg.Tr.Start(ctx, "Query")
 	defer span.End()
 
-	percepts := []percept.Percept{percept.MakeTextUser(query)}
+	percepts := []percept.Percept{percept.MakeUser(query)}
 	for i := range eg.MaxIter {
 		eg.Log.Debug("iterate agent", "method", "Act", "iterNum", i, "maxIter", eg.MaxIter)
 
-		action, err := eg.Agent.Action(ctx, percepts)
+		next, err := eg.Agent.Action(ctx, percepts)
 		if err != nil {
 			return "", fmt.Errorf("agent actions: %w", err)
 		}
 
 		// If action is of type user, return the content.
-		if content, ok := action.User(); ok {
+		if content, ok := next.User(); ok {
 			eg.Log.Debug("found user action", "method", "Act", "content", content)
 			return content, nil
 		}
 
-		content, ok := action.Tool()
-		if !ok {
-			// Todo
-			return "", fmt.Errorf("action is not of type tool")
-		}
-
-		percepts, err = eg.Actor.Act(ctx, content)
+		percepts, err = eg.Actor.Act(ctx, next)
 		if err != nil {
 			return "", fmt.Errorf("actor act: %w", err)
 		}
 	}
 
-	return "", nil
+	return "", fmt.Errorf("reached max iterations %v", eg.MaxIter)
 }

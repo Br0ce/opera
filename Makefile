@@ -5,6 +5,8 @@ format:
 
 lint:
 	golangci-lint run
+	go vet ./pkg/...
+	go vet ./integration/...
 
 clean-test:
 	go clean -testcache

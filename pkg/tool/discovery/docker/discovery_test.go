@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"iter"
 	"net/url"
 	"reflect"
 	"slices"
@@ -38,33 +39,17 @@ func (mc *mockClient) Close() error {
 	return nil
 }
 
-func testTool() tool.Tool {
-	props := map[string]any{
-		"location": map[string]any{
-			"type": "string",
-		},
-	}
-	req := []string{"location"}
-	to, _ := tool.MakeTool(
-		tool.WithName("myTool"),
-		tool.WithAddr(url.URL{Host: "myHost"}),
-		tool.WithDescription("my description"),
-		tool.WithParameters(props, req),
-	)
-	return to
-}
-
 func TestDiscovery_Get(t *testing.T) {
 	t.Parallel()
 
-	ttool := testTool()
+	toolA := tool.TestToolA()
 	type args struct {
 		ctx  context.Context
 		name string
 	}
 	tests := []struct {
 		name       string
-		getFn      func(ctx context.Context, name string) (tool.Tool, error)
+		getFn      func(name string) (tool.Tool, error)
 		getInvoked bool
 		args       args
 		want       tool.Tool
@@ -72,23 +57,23 @@ func TestDiscovery_Get(t *testing.T) {
 	}{
 		{
 			name: "pass",
-			getFn: func(ctx context.Context, name string) (tool.Tool, error) {
-				if name != ttool.Name() {
-					t.Fatalf("Discovery.Get() name = %v, want %v", name, ttool.Name())
+			getFn: func(name string) (tool.Tool, error) {
+				if name != toolA.Name() {
+					t.Fatalf("Discovery.Get() name = %v, want %v", name, toolA.Name())
 				}
-				return ttool, nil
+				return toolA, nil
 			},
 			getInvoked: true,
 			args: args{
 				ctx:  context.TODO(),
-				name: ttool.Name(),
+				name: toolA.Name(),
 			},
-			want:    ttool,
+			want:    toolA,
 			wantErr: false,
 		},
 		{
 			name: "db error",
-			getFn: func(ctx context.Context, name string) (tool.Tool, error) {
+			getFn: func(name string) (tool.Tool, error) {
 				return tool.Tool{}, errors.New("some error")
 			},
 			getInvoked: true,
@@ -145,67 +130,36 @@ func TestDiscovery_Get(t *testing.T) {
 func TestDiscovery_All(t *testing.T) {
 	t.Parallel()
 
-	props := map[string]any{
-		"location": map[string]any{
-			"type": "string",
-		},
-	}
-	req := []string{"location"}
-	t1, err := tool.MakeTool(
-		tool.WithName("myTool"),
-		tool.WithAddr(url.URL{Host: "myHost"}),
-		tool.WithDescription("my description"),
-		tool.WithParameters(props, req),
-	)
-	if err != nil {
-		t.Fatalf("make test tool: %s", err.Error())
-	}
-	t2, err := tool.MakeTool(
-		tool.WithName("myOtherTool"),
-		tool.WithAddr(url.URL{Host: "myHost"}),
-		tool.WithDescription("my description"),
-		tool.WithParameters(props, req),
-	)
-	if err != nil {
-		t.Fatalf("make other test tool: %s", err.Error())
-	}
-
+	tools := tool.TestTools()
 	tests := []struct {
 		name       string
 		ctx        context.Context
-		allFn      func(ctx context.Context) ([]tool.Tool, error)
+		allFn      func() iter.Seq[tool.Tool]
 		allInvoked bool
 		want       []tool.Tool
-		wantErr    bool
 	}{
 		{
 			name: "no tools present",
-			allFn: func(ctx context.Context) ([]tool.Tool, error) {
-				return []tool.Tool{}, nil
+			allFn: func() iter.Seq[tool.Tool] {
+				return func(yield func(tool.Tool) bool) {
+				}
 			},
 			allInvoked: true,
 			ctx:        context.TODO(),
-			want:       []tool.Tool{},
-			wantErr:    false,
-		},
-		{
-			name: "db error",
-			allFn: func(ctx context.Context) ([]tool.Tool, error) {
-				return nil, errors.New("some error")
-			},
-			allInvoked: true,
-			ctx:        context.TODO(),
-			wantErr:    true,
+			want:       nil,
 		},
 		{
 			name: "pass",
-			allFn: func(ctx context.Context) ([]tool.Tool, error) {
-				return []tool.Tool{t1, t2}, nil
+			allFn: func() iter.Seq[tool.Tool] {
+				return func(yield func(tool.Tool) bool) {
+					for _, t := range tools {
+						yield(t)
+					}
+				}
 			},
 			allInvoked: true,
 			ctx:        context.TODO(),
-			want:       []tool.Tool{t1, t2},
-			wantErr:    false,
+			want:       tools,
 		},
 	}
 
@@ -233,14 +187,7 @@ func TestDiscovery_All(t *testing.T) {
 				tr:  tr,
 				log: log,
 			}
-			got, err := di.All(test.ctx)
-			if (err != nil) != test.wantErr {
-				t.Errorf("Discovery.All() error = %v, wantErr %v", err, test.wantErr)
-				return
-			}
-			if test.wantErr {
-				return
-			}
+			got := di.All(test.ctx)
 			if !reflect.DeepEqual(got, test.want) {
 				t.Errorf("Discovery.All() = %v, want %v", got, test.want)
 			}
@@ -252,44 +199,28 @@ func TestDiscovery_All(t *testing.T) {
 }
 
 func TestDiscovery_Refresh(t *testing.T) {
+	t.Parallel()
 
 	tests := []struct {
 		name             string
 		ctx              context.Context
-		clearFn          func(ctx context.Context) error
 		clearInvoked     bool
 		listContainersFn func(ctx context.Context, options container.ListOptions) ([]types.Container, error)
 		contListInvoked  bool
 		closeInvoked     bool
 		getFn            func(ctx context.Context, addr string, header map[string][]string) ([]byte, error)
 		getInvoked       bool
-		addFn            func(ctx context.Context, tool tool.Tool) error
+		addFn            func(tool tool.Tool) error
 		addInvoked       bool
 		wantErr          bool
 	}{
 		{
-			name: "db clear error",
-			ctx:  context.TODO(),
-			clearFn: func(ctx context.Context) error {
-				return errors.New("some error")
-			},
-			clearInvoked:    true,
-			contListInvoked: false,
-			closeInvoked:    false,
-			getInvoked:      false,
-			addInvoked:      false,
-			wantErr:         true,
-		},
-		{
 			name: "client error",
 			ctx:  context.TODO(),
-			clearFn: func(ctx context.Context) error {
-				return nil
-			},
-			clearInvoked: true,
 			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
 				return nil, errors.New("some error")
 			},
+			clearInvoked:    false,
 			contListInvoked: true,
 			closeInvoked:    true,
 			getInvoked:      false,
@@ -297,27 +228,8 @@ func TestDiscovery_Refresh(t *testing.T) {
 			wantErr:         true,
 		},
 		{
-			name: "client error",
-			ctx:  context.TODO(),
-			clearFn: func(ctx context.Context) error {
-				return nil
-			},
-			clearInvoked: true,
-			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
-				return nil, errors.New("some error")
-			},
-			contListInvoked: true,
-			closeInvoked:    true,
-			getInvoked:      false,
-			addInvoked:      false,
-			wantErr:         true,
-		},
-		{
-			name: "no tool containers",
-			ctx:  context.TODO(),
-			clearFn: func(ctx context.Context) error {
-				return nil
-			},
+			name:         "no tool containers",
+			ctx:          context.TODO(),
 			clearInvoked: true,
 			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
 				return []types.Container{
@@ -336,11 +248,8 @@ func TestDiscovery_Refresh(t *testing.T) {
 			wantErr:         false,
 		},
 		{
-			name: "transport error",
-			ctx:  context.TODO(),
-			clearFn: func(ctx context.Context) error {
-				return nil
-			},
+			name:         "transport error",
+			ctx:          context.TODO(),
 			clearInvoked: true,
 			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
 				return []types.Container{
@@ -369,11 +278,8 @@ func TestDiscovery_Refresh(t *testing.T) {
 			wantErr:    true,
 		},
 		{
-			name: "invalid config error",
-			ctx:  context.TODO(),
-			clearFn: func(ctx context.Context) error {
-				return nil
-			},
+			name:         "invalid config error",
+			ctx:          context.TODO(),
 			clearInvoked: true,
 			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
 				return []types.Container{
@@ -420,11 +326,8 @@ func TestDiscovery_Refresh(t *testing.T) {
 			wantErr:    true,
 		},
 		{
-			name: "add tool error",
-			ctx:  context.TODO(),
-			clearFn: func(ctx context.Context) error {
-				return nil
-			},
+			name:         "add tool error",
+			ctx:          context.TODO(),
 			clearInvoked: true,
 			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
 				return []types.Container{
@@ -467,18 +370,15 @@ func TestDiscovery_Refresh(t *testing.T) {
 				return bb, nil
 			},
 			getInvoked: true,
-			addFn: func(ctx context.Context, tool tool.Tool) error {
+			addFn: func(tool tool.Tool) error {
 				return errors.New("some error")
 			},
 			addInvoked: true,
 			wantErr:    true,
 		},
 		{
-			name: "one tool",
-			ctx:  context.TODO(),
-			clearFn: func(ctx context.Context) error {
-				return nil
-			},
+			name:         "one tool",
+			ctx:          context.TODO(),
 			clearInvoked: true,
 			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
 				return []types.Container{
@@ -521,7 +421,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 				return bb, nil
 			},
 			getInvoked: true,
-			addFn: func(ctx context.Context, to tool.Tool) error {
+			addFn: func(to tool.Tool) error {
 				wantTool, err := tool.MakeTool(
 					tool.WithName("myTool"),
 					tool.WithAddr(url.URL{Host: "myHost:8888", Scheme: "http", Path: "myPath"}),
@@ -544,11 +444,8 @@ func TestDiscovery_Refresh(t *testing.T) {
 			wantErr:    false,
 		},
 		{
-			name: "two tools",
-			ctx:  context.TODO(),
-			clearFn: func(ctx context.Context) error {
-				return nil
-			},
+			name:         "two tools",
+			ctx:          context.TODO(),
 			clearInvoked: true,
 			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
 				return []types.Container{
@@ -598,7 +495,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 				return bb, nil
 			},
 			getInvoked: true,
-			addFn: func(ctx context.Context, to tool.Tool) error {
+			addFn: func(to tool.Tool) error {
 				return nil
 			},
 			addInvoked: true,
@@ -623,8 +520,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			db := &mockDB.ToolDB{
-				ClearFn: test.clearFn,
-				AddFn:   test.addFn,
+				AddFn: test.addFn,
 			}
 			cli := &mockClient{
 				containerListFn: test.listContainersFn,
@@ -903,6 +799,8 @@ func TestDiscovery_toTool(t *testing.T) {
 }
 
 func TestDiscovery_containers(t *testing.T) {
+	t.Parallel()
+
 	cont1 := types.Container{
 		Image: "myImage",
 	}
