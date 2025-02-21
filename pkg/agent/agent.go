@@ -14,23 +14,23 @@ import (
 	"github.com/Br0ce/opera/pkg/tool"
 )
 
-type Generator interface {
-	Generate(ctx context.Context, hist history.History, tools []tool.Tool) (action.Action, error)
+type Reasoner interface {
+	Reason(ctx context.Context, hist history.History, tools []tool.Tool) (action.Action, error)
 }
 
 type Agent struct {
-	gen       Generator
+	reasoner  Reasoner
 	history   history.History
 	discovery tool.Discovery
 	tr        trace.Tracer
 	log       *slog.Logger
 }
 
-func New(sysPrompt string, discovery tool.Discovery, generate Generator, log *slog.Logger) *Agent {
+func New(sysPrompt string, discovery tool.Discovery, reasoner Reasoner, log *slog.Logger) *Agent {
 	hist := history.History{}
 	hist.AddSystem(sysPrompt)
 	return &Agent{
-		gen:       generate,
+		reasoner:  reasoner,
 		history:   hist,
 		discovery: discovery,
 		tr:        monitor.Tracer("Agent"),
@@ -47,7 +47,7 @@ func (ag *Agent) Action(ctx context.Context, percepts []percept.Percept) (action
 	ag.history.AddPercepts(percepts)
 
 	tools := ag.discovery.All(ctx)
-	next, err := ag.gen.Generate(ctx, ag.history, tools)
+	next, err := ag.reasoner.Reason(ctx, ag.history, tools)
 	if err != nil {
 		return action.Action{}, fmt.Errorf("chat: %w", err)
 	}

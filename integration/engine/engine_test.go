@@ -16,8 +16,8 @@ import (
 	"github.com/Br0ce/opera/pkg/agent"
 	"github.com/Br0ce/opera/pkg/db/inmem"
 	"github.com/Br0ce/opera/pkg/engine"
-	"github.com/Br0ce/opera/pkg/generate/openai"
 	"github.com/Br0ce/opera/pkg/monitor"
+	"github.com/Br0ce/opera/pkg/reason/openai"
 	"github.com/Br0ce/opera/pkg/tool/discovery/docker"
 	"github.com/Br0ce/opera/pkg/transport"
 	"github.com/Br0ce/opera/pkg/user"
@@ -56,7 +56,6 @@ func TestEngine_Query(t *testing.T) {
 	}()
 
 	log := monitor.NewTestLogger(true)
-	generator := openai.NewGenerator(token, "gpt-4o", log)
 	trans := transport.NewHTTP(time.Second*5, log)
 	discovery, err := docker.NewDiscovery(inmem.NewToolDB(), trans, log)
 	// discovery, err := config.NewDiscovery(ctx, "../../data/discovery/tools.json", db, otel.Tracer("ConfigDiscovery"), log)
@@ -67,7 +66,8 @@ func TestEngine_Query(t *testing.T) {
 	if err != nil {
 		t.Fatalf("refresh discovery: %s", err.Error())
 	}
-	agent := agent.New("You are a  friendly assistent!", discovery, generator, log)
+	reasoner := openai.NewReasoner(token, "gpt-4o", log)
+	agent := agent.New("You are a  friendly assistent!", discovery, reasoner, log)
 	transporter := transport.NewHTTP(time.Second*30, log)
 	actor := action.NewActor(discovery, transporter, log)
 

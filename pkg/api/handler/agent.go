@@ -14,8 +14,8 @@ import (
 	"github.com/Br0ce/opera/pkg/agent"
 	"github.com/Br0ce/opera/pkg/db"
 	"github.com/Br0ce/opera/pkg/engine"
-	"github.com/Br0ce/opera/pkg/generate/openai"
 	"github.com/Br0ce/opera/pkg/monitor"
+	"github.com/Br0ce/opera/pkg/reason/openai"
 	"github.com/Br0ce/opera/pkg/tool"
 	"github.com/Br0ce/opera/pkg/user"
 )
@@ -24,8 +24,8 @@ const AgentID = "agentID"
 
 type Agent struct {
 	engine    *engine.Engine
-	discovery tool.Discovery
 	db        db.Agent
+	discovery tool.Discovery
 	tr        trace.Tracer
 	pr        propagation.TextMapPropagator
 	log       *slog.Logger
@@ -34,8 +34,8 @@ type Agent struct {
 func NewAgent(engine *engine.Engine, db db.Agent, discovery tool.Discovery, log *slog.Logger) *Agent {
 	return &Agent{
 		engine:    engine,
-		discovery: discovery,
 		db:        db,
+		discovery: discovery,
 		tr:        monitor.Tracer("AgentHandler"),
 		pr:        monitor.Propagator(),
 		log:       log,
@@ -132,8 +132,8 @@ func (ag *Agent) Create(w http.ResponseWriter, r *http.Request) {
 		"prompt", prompt,
 		"traceID", monitor.TraceID(span))
 
-	generator := openai.NewGenerator(token, model, ag.log)
-	a := agent.New(prompt, ag.discovery, generator, ag.log)
+	reasoner := openai.NewReasoner(token, model, ag.log)
+	a := agent.New(prompt, ag.discovery, reasoner, ag.log)
 	id, err := ag.db.Add(*a)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
