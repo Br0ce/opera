@@ -46,11 +46,7 @@ func (ag *Agent) Action(ctx context.Context, percepts []percept.Percept) (action
 
 	ag.history.AddPercepts(percepts)
 
-	tools, err := ag.tools(ctx)
-	if err != nil {
-		return action.Action{}, fmt.Errorf("get tools: %w", err)
-	}
-
+	tools := ag.discovery.All(ctx)
 	next, err := ag.gen.Generate(ctx, ag.history, tools)
 	if err != nil {
 		return action.Action{}, fmt.Errorf("chat: %w", err)
@@ -59,13 +55,4 @@ func (ag *Agent) Action(ctx context.Context, percepts []percept.Percept) (action
 	ag.history.AddAction(next)
 
 	return next, nil
-}
-
-func (ag *Agent) tools(ctx context.Context) ([]tool.Tool, error) {
-	err := ag.discovery.Refresh(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("refresh discovery: %w", err)
-	}
-
-	return ag.discovery.All(ctx), nil
 }

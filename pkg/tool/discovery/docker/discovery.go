@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/url"
 	"slices"
+	"sync"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -40,6 +41,7 @@ type Discovery struct {
 	db        db.Tool
 	client    client.APIClient
 	transport Transporter
+	mu        sync.RWMutex
 	tr        trace.Tracer
 	log       *slog.Logger
 }
@@ -64,6 +66,9 @@ func (di *Discovery) Get(ctx context.Context, name string) (tool.Tool, error) {
 	defer span.End()
 	di.log.Debug("get tool", "method", "Get", "name", name, "traceID", monitor.TraceID(span))
 
+	di.mu.RLock()
+	defer di.mu.RUnlock()
+
 	to, err := di.db.Get(name)
 	if err != nil {
 		return tool.Tool{}, fmt.Errorf("get tool %s: %w", name, err)
@@ -76,6 +81,9 @@ func (di *Discovery) All(ctx context.Context) []tool.Tool {
 	_, span := di.tr.Start(ctx, "get all tools")
 	defer span.End()
 	di.log.Debug("get all tools", "method", "All", "traceID", monitor.TraceID(span))
+
+	di.mu.RLock()
+	defer di.mu.RUnlock()
 
 	return slices.Collect(di.db.All())
 }
@@ -94,6 +102,9 @@ func (di *Discovery) Refresh(ctx context.Context) error {
 
 	errChan := make(chan error, len(conts))
 	defer close(errChan)
+
+	// Hold lock so that the db is not deleted while it is being read.
+	di.mu.Lock()
 
 	di.db.Clear()
 	for _, cont := range conts {
@@ -122,6 +133,8 @@ func (di *Discovery) Refresh(ctx context.Context) error {
 	for range len(conts) {
 		addErr = errors.Join(addErr, <-errChan)
 	}
+	di.mu.Unlock()
+
 	return addErr
 }
 

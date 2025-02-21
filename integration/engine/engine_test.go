@@ -33,7 +33,6 @@ func TestEngine_Query(t *testing.T) {
 		t.Fatal("OPENAI_TOKEN env not found")
 	}
 	type fields struct {
-		Agent   *agent.Agent
 		Actor   *action.Actor
 		MaxIter int
 		Log     *slog.Logger
@@ -41,6 +40,7 @@ func TestEngine_Query(t *testing.T) {
 	type args struct {
 		ctx   context.Context
 		query user.Query
+		Agent *agent.Agent
 	}
 
 	ctx := context.TODO()
@@ -63,6 +63,10 @@ func TestEngine_Query(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new discovery: %s", err.Error())
 	}
+	err = discovery.Refresh(ctx)
+	if err != nil {
+		t.Fatalf("refresh discovery: %s", err.Error())
+	}
 	agent := agent.New("You are a  friendly assistent!", discovery, generator, log)
 	transporter := transport.NewHTTP(time.Second*30, log)
 	actor := action.NewActor(discovery, transporter, log)
@@ -77,7 +81,6 @@ func TestEngine_Query(t *testing.T) {
 		{
 			name: "integraion",
 			fields: fields{
-				Agent:   agent,
 				Actor:   actor,
 				MaxIter: 5,
 				Log:     log,
@@ -85,6 +88,7 @@ func TestEngine_Query(t *testing.T) {
 			args: args{
 				ctx:   ctx,
 				query: user.Query{Text: "Could you recommend surfing in Sydney at the moment?"},
+				Agent: agent,
 			},
 			want: "The weather in Sydney is 30 degrees and surfing is not recommended.",
 		},
@@ -93,13 +97,12 @@ func TestEngine_Query(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			eg := &engine.Engine{
-				Agent:   test.fields.Agent,
 				Actor:   test.fields.Actor,
 				MaxIter: test.fields.MaxIter,
 				Tr:      otel.Tracer("Engine"),
 				Log:     test.fields.Log,
 			}
-			got, err := eg.Query(test.args.ctx, test.args.query)
+			got, err := eg.Query(test.args.ctx, test.args.query, test.args.Agent)
 			if (err != nil) != test.wantErr {
 				t.Errorf("Engine.Query() error = %v, wantErr %v", err, test.wantErr)
 				return

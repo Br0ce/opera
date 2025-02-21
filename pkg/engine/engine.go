@@ -14,14 +14,13 @@ import (
 )
 
 type Engine struct {
-	Agent   *agent.Agent
 	Actor   *action.Actor
 	MaxIter int
 	Tr      trace.Tracer
 	Log     *slog.Logger
 }
 
-func (eg *Engine) Query(ctx context.Context, query user.Query) (string, error) {
+func (eg *Engine) Query(ctx context.Context, query user.Query, agent *agent.Agent) (string, error) {
 	ctx, span := eg.Tr.Start(ctx, "Query")
 	defer span.End()
 
@@ -29,7 +28,7 @@ func (eg *Engine) Query(ctx context.Context, query user.Query) (string, error) {
 	for i := range eg.MaxIter {
 		eg.Log.Debug("iterate agent", "method", "Act", "iterNum", i, "maxIter", eg.MaxIter)
 
-		next, err := eg.Agent.Action(ctx, percepts)
+		next, err := agent.Action(ctx, percepts)
 		if err != nil {
 			return "", fmt.Errorf("agent actions: %w", err)
 		}

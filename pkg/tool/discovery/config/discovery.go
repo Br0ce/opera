@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 
 	"go.opentelemetry.io/otel/trace"
 
@@ -19,6 +20,7 @@ var _ tool.Discovery = (*Discovery)(nil)
 type Discovery struct {
 	db   db.Tool
 	path string
+	mu   sync.RWMutex
 	tr   trace.Tracer
 	log  *slog.Logger
 }
@@ -42,6 +44,10 @@ func (di *Discovery) Get(ctx context.Context, name string) (tool.Tool, error) {
 	_, span := di.tr.Start(ctx, "get tool")
 	defer span.End()
 	di.log.Debug("get tool", "method", "Get", "name", name, "traceID", monitor.TraceID(span))
+
+	di.mu.RLock()
+	defer di.mu.RUnlock()
+
 	return di.db.Get(name)
 }
 
@@ -49,6 +55,9 @@ func (di *Discovery) All(ctx context.Context) []tool.Tool {
 	_, span := di.tr.Start(ctx, "get all tools")
 	defer span.End()
 	di.log.Debug("get all tools", "method", "All", "traceID", monitor.TraceID(span))
+
+	di.mu.RLock()
+	defer di.mu.RUnlock()
 
 	var tt []tool.Tool
 	for t := range di.db.All() {
@@ -67,6 +76,9 @@ func (di *Discovery) Refresh(ctx context.Context) error {
 		return fmt.Errorf("read config: %w", err)
 	}
 
+	di.mu.Lock()
+	defer di.mu.Unlock()
+
 	di.db.Clear()
 	for _, item := range items {
 		tool, err := item.Decode()
@@ -78,6 +90,7 @@ func (di *Discovery) Refresh(ctx context.Context) error {
 			return fmt.Errorf("add tool: %w", err)
 		}
 	}
+
 	return nil
 }
 

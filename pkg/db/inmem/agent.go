@@ -48,6 +48,14 @@ func (ag *Agent) Get(id string) (agent.Agent, error) {
 	return a, nil
 }
 
+func (ag *Agent) Update(id string, agent agent.Agent) error {
+	_, ok := ag.agents.LoadOrStore(id, agent)
+	if !ok {
+		return db.ErrNotFound
+	}
+	return nil
+}
+
 // Delete deletes the Agent stored for the given id.
 func (ag *Agent) Delete(id string) error {
 	ag.agents.Delete(id)
