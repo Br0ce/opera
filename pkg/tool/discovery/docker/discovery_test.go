@@ -13,9 +13,9 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/Br0ce/opera/pkg/db/mock"
 	"github.com/Br0ce/opera/pkg/monitor"
 	"github.com/Br0ce/opera/pkg/tool"
-	mockDB "github.com/Br0ce/opera/pkg/tool/mock"
 	mockTransport "github.com/Br0ce/opera/pkg/transport/mock"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -101,7 +101,7 @@ func TestDiscovery_Get(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db := &mockDB.ToolDB{
+			db := &mock.ToolDB{
 				GetFn: test.getFn,
 			}
 			di := &Discovery{
@@ -179,7 +179,7 @@ func TestDiscovery_All(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db := &mockDB.ToolDB{
+			db := &mock.ToolDB{
 				AllFn: test.allFn,
 			}
 			di := &Discovery{
@@ -519,7 +519,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db := &mockDB.ToolDB{
+			db := &mock.ToolDB{
 				AddFn: test.addFn,
 			}
 			cli := &mockClient{

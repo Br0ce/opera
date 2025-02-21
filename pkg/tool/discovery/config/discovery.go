@@ -9,6 +9,7 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/Br0ce/opera/pkg/db"
 	"github.com/Br0ce/opera/pkg/monitor"
 	"github.com/Br0ce/opera/pkg/tool"
 )
@@ -16,13 +17,13 @@ import (
 var _ tool.Discovery = (*Discovery)(nil)
 
 type Discovery struct {
-	db   tool.DB
+	db   db.Tool
 	path string
 	tr   trace.Tracer
 	log  *slog.Logger
 }
 
-func NewDiscovery(ctx context.Context, path string, db tool.DB, tracer trace.Tracer, log *slog.Logger) (*Discovery, error) {
+func NewDiscovery(ctx context.Context, path string, db db.Tool, tracer trace.Tracer, log *slog.Logger) (*Discovery, error) {
 	di := &Discovery{
 		db:   db,
 		path: path,

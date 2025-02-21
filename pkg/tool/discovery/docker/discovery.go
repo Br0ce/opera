@@ -14,6 +14,7 @@ import (
 	"github.com/docker/docker/client"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/Br0ce/opera/pkg/db"
 	"github.com/Br0ce/opera/pkg/monitor"
 	"github.com/Br0ce/opera/pkg/tool"
 )
@@ -36,14 +37,14 @@ type Transporter interface {
 }
 
 type Discovery struct {
-	db        tool.DB
+	db        db.Tool
 	client    client.APIClient
 	transport Transporter
 	tr        trace.Tracer
 	log       *slog.Logger
 }
 
-func NewDiscovery(db tool.DB, transport Transporter, tracer trace.Tracer, log *slog.Logger) (*Discovery, error) {
+func NewDiscovery(db db.Tool, transport Transporter, tracer trace.Tracer, log *slog.Logger) (*Discovery, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("new docker client: %w", err)

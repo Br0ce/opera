@@ -4,21 +4,21 @@ import (
 	"iter"
 	"sync"
 
+	"github.com/Br0ce/opera/pkg/db"
 	"github.com/Br0ce/opera/pkg/tool"
-	"github.com/Br0ce/opera/pkg/tool/db"
 )
 
-var _ tool.DB = (*Tool)(nil)
+var _ db.Tool = (*Tool)(nil)
 
 type Tool struct {
 	tools sync.Map
 }
 
-func NewDB() *Tool {
+func NewToolDB() *Tool {
 	return &Tool{}
 }
 
-// Add stores the tool and can be retrieved with tool name.
+// Add stores the tool that can be retrieved with tool name.
 // If a tool with the same name is already stored, a db.ErrAlreadyExists is returned.
 func (to *Tool) Add(tool tool.Tool) error {
 	_, ok := to.tools.LoadOrStore(tool.Name(), tool)
@@ -29,10 +29,10 @@ func (to *Tool) Add(tool tool.Tool) error {
 }
 
 // Get returns the tool stored for the given name.
-// If no tool if found for the given name, a db.ErrNotFound is returned.
+// If no tool is found for the given name, a db.ErrNotFound is returned.
 func (to *Tool) Get(name string) (tool.Tool, error) {
 	if name == "" {
-		return tool.Tool{}, db.ErrInvalidName
+		return tool.Tool{}, db.ErrInvalidID
 	}
 	v, ok := to.tools.Load(name)
 	if !ok {

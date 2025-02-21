@@ -14,10 +14,10 @@ import (
 	"github.com/Br0ce/opera/integration/assert"
 	"github.com/Br0ce/opera/pkg/action"
 	"github.com/Br0ce/opera/pkg/agent"
+	"github.com/Br0ce/opera/pkg/db/inmem"
 	"github.com/Br0ce/opera/pkg/engine"
 	"github.com/Br0ce/opera/pkg/generate/openai"
 	"github.com/Br0ce/opera/pkg/monitor"
-	"github.com/Br0ce/opera/pkg/tool/db/inmem"
 	"github.com/Br0ce/opera/pkg/tool/discovery/docker"
 	"github.com/Br0ce/opera/pkg/transport"
 	"github.com/Br0ce/opera/pkg/user"
@@ -58,7 +58,7 @@ func TestEngine_Query(t *testing.T) {
 	log := monitor.NewTestLogger(true)
 	generator := openai.NewGenerator(token, "gpt-4o", otel.Tracer("Generator"), log)
 	trans := transport.NewHTTP(time.Second*5, log)
-	discovery, err := docker.NewDiscovery(inmem.NewDB(), trans, otel.Tracer("DockerDiscovery"), log)
+	discovery, err := docker.NewDiscovery(inmem.NewToolDB(), trans, otel.Tracer("DockerDiscovery"), log)
 	// discovery, err := config.NewDiscovery(ctx, "../../data/discovery/tools.json", db, otel.Tracer("ConfigDiscovery"), log)
 	if err != nil {
 		t.Fatalf("new discovery: %s", err.Error())

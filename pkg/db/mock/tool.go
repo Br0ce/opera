@@ -4,10 +4,11 @@ import (
 	"iter"
 	"sync"
 
+	"github.com/Br0ce/opera/pkg/db"
 	"github.com/Br0ce/opera/pkg/tool"
 )
 
-var _ tool.DB = (*ToolDB)(nil)
+var _ db.Tool = (*ToolDB)(nil)
 
 type ToolDB struct {
 	AddFn        func(tool tool.Tool) error
