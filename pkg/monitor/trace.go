@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	otrace "go.opentelemetry.io/otel/trace"
 )
 
 // StartTracing bootstraps OpenTelemetry by setting a propagator and a trace provider with
@@ -49,6 +50,16 @@ func StartTestTracing(ctx context.Context, integration bool, tpAddr string) (fun
 	otel.SetTracerProvider(tp)
 
 	return tp.Shutdown, nil
+}
+
+// Tracer returns a Tracer with the given name.
+func Tracer(name string) otrace.Tracer {
+	return otel.Tracer(name)
+}
+
+// Propagator returns a TextMapPropagator.
+func Propagator() propagation.TextMapPropagator {
+	return otel.GetTextMapPropagator()
 }
 
 // newTraceProvider creates a trace provider with the given addr.

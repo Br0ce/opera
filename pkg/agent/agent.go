@@ -9,6 +9,7 @@ import (
 
 	"github.com/Br0ce/opera/pkg/action"
 	"github.com/Br0ce/opera/pkg/history"
+	"github.com/Br0ce/opera/pkg/monitor"
 	"github.com/Br0ce/opera/pkg/percept"
 	"github.com/Br0ce/opera/pkg/tool"
 )
@@ -25,14 +26,14 @@ type Agent struct {
 	log       *slog.Logger
 }
 
-func New(sysPrompt string, discovery tool.Discovery, generate Generator, tracer trace.Tracer, log *slog.Logger) *Agent {
+func New(sysPrompt string, discovery tool.Discovery, generate Generator, log *slog.Logger) *Agent {
 	hist := history.History{}
 	hist.AddSystem(sysPrompt)
 	return &Agent{
 		gen:       generate,
 		history:   hist,
 		discovery: discovery,
-		tr:        tracer,
+		tr:        monitor.Tracer("Agent"),
 		log:       log,
 	}
 }

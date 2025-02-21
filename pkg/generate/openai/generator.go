@@ -22,11 +22,11 @@ type Generator struct {
 	log    *slog.Logger
 }
 
-func NewGenerator(token string, modelName string, tracer trace.Tracer, log *slog.Logger) *Generator {
+func NewGenerator(token string, modelName string, log *slog.Logger) *Generator {
 	return &Generator{
 		client: openai.NewClient(option.WithAPIKey(token)),
 		model:  modelName,
-		tr:     tracer,
+		tr:     monitor.Tracer("Generator"),
 		log:    log,
 	}
 }

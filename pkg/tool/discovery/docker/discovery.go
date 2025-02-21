@@ -44,7 +44,7 @@ type Discovery struct {
 	log       *slog.Logger
 }
 
-func NewDiscovery(db db.Tool, transport Transporter, tracer trace.Tracer, log *slog.Logger) (*Discovery, error) {
+func NewDiscovery(db db.Tool, transport Transporter, log *slog.Logger) (*Discovery, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("new docker client: %w", err)
@@ -53,7 +53,7 @@ func NewDiscovery(db db.Tool, transport Transporter, tracer trace.Tracer, log *s
 		db:        db,
 		client:    cli,
 		transport: transport,
-		tr:        tracer,
+		tr:        monitor.Tracer("DockerDiscovery"),
 		log:       log,
 	}, nil
 }

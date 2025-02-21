@@ -10,7 +10,6 @@ import (
 	"slices"
 	"testing"
 
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Br0ce/opera/pkg/db/mock"
@@ -97,7 +96,7 @@ func TestDiscovery_Get(t *testing.T) {
 			t.Logf("shutdown tracing: %s", err.Error())
 		}
 	}(ctx)
-	tr := otel.Tracer("test")
+	tr := monitor.Tracer("test")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -175,7 +174,7 @@ func TestDiscovery_All(t *testing.T) {
 			t.Logf("shutdown tracing: %s", err.Error())
 		}
 	}(ctx)
-	tr := otel.Tracer("test")
+	tr := monitor.Tracer("test")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -515,7 +514,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 			t.Logf("shutdown tracing: %s", err.Error())
 		}
 	}(ctx)
-	tr := otel.Tracer("test")
+	tr := monitor.Tracer("test")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -630,7 +629,7 @@ func TestDiscovery_config(t *testing.T) {
 			t.Logf("shutdown tracing: %s", err.Error())
 		}
 	}(ctx)
-	tr := otel.Tracer("test")
+	tr := monitor.Tracer("test")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -767,7 +766,7 @@ func TestDiscovery_toTool(t *testing.T) {
 			t.Logf("shutdown tracing: %s", err.Error())
 		}
 	}(ctx)
-	tr := otel.Tracer("test")
+	tr := monitor.Tracer("test")
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

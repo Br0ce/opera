@@ -56,16 +56,16 @@ func TestEngine_Query(t *testing.T) {
 	}()
 
 	log := monitor.NewTestLogger(true)
-	generator := openai.NewGenerator(token, "gpt-4o", otel.Tracer("Generator"), log)
+	generator := openai.NewGenerator(token, "gpt-4o", log)
 	trans := transport.NewHTTP(time.Second*5, log)
-	discovery, err := docker.NewDiscovery(inmem.NewToolDB(), trans, otel.Tracer("DockerDiscovery"), log)
+	discovery, err := docker.NewDiscovery(inmem.NewToolDB(), trans, log)
 	// discovery, err := config.NewDiscovery(ctx, "../../data/discovery/tools.json", db, otel.Tracer("ConfigDiscovery"), log)
 	if err != nil {
 		t.Fatalf("new discovery: %s", err.Error())
 	}
-	agent := agent.New("You are a  friendly assistent!", discovery, generator, otel.Tracer("Agent"), log)
+	agent := agent.New("You are a  friendly assistent!", discovery, generator, log)
 	transporter := transport.NewHTTP(time.Second*30, log)
-	actor := action.NewActor(discovery, transporter, otel.Tracer("Actor"), log)
+	actor := action.NewActor(discovery, transporter, log)
 
 	tests := []struct {
 		name    string

@@ -23,11 +23,11 @@ type Discovery struct {
 	log  *slog.Logger
 }
 
-func NewDiscovery(ctx context.Context, path string, db db.Tool, tracer trace.Tracer, log *slog.Logger) (*Discovery, error) {
+func NewDiscovery(ctx context.Context, path string, db db.Tool, log *slog.Logger) (*Discovery, error) {
 	di := &Discovery{
 		db:   db,
 		path: path,
-		tr:   tracer,
+		tr:   monitor.Tracer("ConfigDiscovery"),
 		log:  log,
 	}
 	err := di.Refresh(ctx)

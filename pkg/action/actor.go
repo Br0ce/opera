@@ -27,11 +27,11 @@ type Actor struct {
 	log       *slog.Logger
 }
 
-func NewActor(discovery tool.Discovery, transport Transporter, tracer trace.Tracer, log *slog.Logger) *Actor {
+func NewActor(discovery tool.Discovery, transport Transporter, log *slog.Logger) *Actor {
 	return &Actor{
 		discovery: discovery,
 		transport: transport,
-		tr:        tracer,
+		tr:        monitor.Tracer("Actor"),
 		log:       log,
 	}
 }
