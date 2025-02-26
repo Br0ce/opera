@@ -33,17 +33,17 @@ func (ag *Agent) Add(agent agent.Agent) (string, error) {
 // If no Agent is found for the given id, a db.ErrNotFound is returned.
 func (ag *Agent) Get(id string) (agent.Agent, error) {
 	if id == "" {
-		return agent.Agent{}, db.ErrInvalidID
+		return nil, db.ErrInvalidID
 	}
 	v, ok := ag.agents.Load(id)
 	if !ok {
-		return agent.Agent{}, db.ErrNotFound
+		return nil, db.ErrNotFound
 	}
 
 	a, ok := v.(agent.Agent)
 	if !ok {
 		// This should not happen.
-		return agent.Agent{}, db.ErrInternal
+		return nil, db.ErrInternal
 	}
 	return a, nil
 }

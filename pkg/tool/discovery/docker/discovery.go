@@ -46,18 +46,24 @@ type Discovery struct {
 	log       *slog.Logger
 }
 
-func NewDiscovery(db db.Tool, transport Transporter, log *slog.Logger) (*Discovery, error) {
+// NewDiscovery returns a pointer to a refreshed Discovery.
+func NewDiscovery(ctx context.Context, db db.Tool, transport Transporter, log *slog.Logger) (*Discovery, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("new docker client: %w", err)
 	}
-	return &Discovery{
+	di := &Discovery{
 		db:        db,
 		client:    cli,
 		transport: transport,
 		tr:        monitor.Tracer("DockerDiscovery"),
 		log:       log,
-	}, nil
+	}
+	err = di.Refresh(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("refresh: %w", err)
+	}
+	return di, nil
 }
 
 // Get returns the Tool for the given name from the database.

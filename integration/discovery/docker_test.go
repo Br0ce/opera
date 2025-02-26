@@ -68,8 +68,8 @@ func TestDiscovery_All(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			trans := transport.NewHTTP(time.Second*5, log)
-			di, err := docker.NewDiscovery(inmem.NewToolDB(), trans, log)
+			trans := transport.NewHTTP(time.Second * 5)
+			di, err := docker.NewDiscovery(test.ctx, inmem.NewToolDB(), trans, log)
 			if err != nil {
 				t.Fatalf("Discovery.All() new test discovery: %s", err.Error())
 			}
@@ -156,8 +156,8 @@ func TestDiscovery_Get(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			trans := transport.NewHTTP(time.Second*5, log)
-			di, err := docker.NewDiscovery(inmem.NewToolDB(), trans, log)
+			trans := transport.NewHTTP(time.Second * 5)
+			di, err := docker.NewDiscovery(test.ctx, inmem.NewToolDB(), trans, log)
 			if err != nil {
 				t.Fatalf("Discovery.All() new test discovery: %s", err.Error())
 			}

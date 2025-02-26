@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"go.opentelemetry.io/otel"
 
 	"github.com/Br0ce/opera/integration/assert"
 	"github.com/Br0ce/opera/pkg/action"
 	"github.com/Br0ce/opera/pkg/agent"
+	"github.com/Br0ce/opera/pkg/agent/function"
 	"github.com/Br0ce/opera/pkg/db/inmem"
-	"github.com/Br0ce/opera/pkg/engine"
+	"github.com/Br0ce/opera/pkg/engine/loop"
 	"github.com/Br0ce/opera/pkg/monitor"
 	"github.com/Br0ce/opera/pkg/reason/openai"
 	"github.com/Br0ce/opera/pkg/tool/discovery/docker"
@@ -40,7 +40,7 @@ func TestEngine_Query(t *testing.T) {
 	type args struct {
 		ctx   context.Context
 		query user.Query
-		Agent *agent.Agent
+		Agent agent.Agent
 	}
 
 	ctx := context.TODO()
@@ -56,19 +56,16 @@ func TestEngine_Query(t *testing.T) {
 	}()
 
 	log := monitor.NewTestLogger(true)
-	trans := transport.NewHTTP(time.Second*5, log)
-	discovery, err := docker.NewDiscovery(inmem.NewToolDB(), trans, log)
+	trans := transport.NewHTTP(time.Second * 5)
+	discovery, err := docker.NewDiscovery(ctx, inmem.NewToolDB(), trans, log)
 	// discovery, err := config.NewDiscovery(ctx, "../../data/discovery/tools.json", db, otel.Tracer("ConfigDiscovery"), log)
 	if err != nil {
 		t.Fatalf("new discovery: %s", err.Error())
 	}
-	err = discovery.Refresh(ctx)
-	if err != nil {
-		t.Fatalf("refresh discovery: %s", err.Error())
-	}
+
 	reasoner := openai.NewReasoner(token, "gpt-4o", log)
-	agent := agent.New("You are a  friendly assistent!", discovery, reasoner, log)
-	transporter := transport.NewHTTP(time.Second*30, log)
+	agent := function.NewAgent("You are a  friendly assistent!", discovery, reasoner, log)
+	transporter := transport.NewHTTP(time.Second * 30)
 	actor := action.NewActor(discovery, transporter, log)
 
 	tests := []struct {
@@ -96,12 +93,7 @@ func TestEngine_Query(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			eg := &engine.Engine{
-				Actor:   test.fields.Actor,
-				MaxIter: test.fields.MaxIter,
-				Tr:      otel.Tracer("Engine"),
-				Log:     test.fields.Log,
-			}
+			eg := loop.NewEngine(test.fields.Actor, test.fields.MaxIter, test.fields.Log)
 			got, err := eg.Query(test.args.ctx, test.args.query, test.args.Agent)
 			if (err != nil) != test.wantErr {
 				t.Errorf("Engine.Query() error = %v, wantErr %v", err, test.wantErr)

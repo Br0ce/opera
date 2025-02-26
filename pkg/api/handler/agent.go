@@ -11,7 +11,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/Br0ce/opera/pkg/agent"
+	"github.com/Br0ce/opera/pkg/agent/function"
 	"github.com/Br0ce/opera/pkg/db"
 	"github.com/Br0ce/opera/pkg/engine"
 	"github.com/Br0ce/opera/pkg/monitor"
@@ -23,7 +23,7 @@ import (
 const AgentID = "agentID"
 
 type Agent struct {
-	engine    *engine.Engine
+	engine    engine.Engine
 	db        db.Agent
 	discovery tool.Discovery
 	tr        trace.Tracer
@@ -31,7 +31,7 @@ type Agent struct {
 	log       *slog.Logger
 }
 
-func NewAgent(engine *engine.Engine, db db.Agent, discovery tool.Discovery, log *slog.Logger) *Agent {
+func NewAgent(engine engine.Engine, db db.Agent, discovery tool.Discovery, log *slog.Logger) *Agent {
 	return &Agent{
 		engine:    engine,
 		db:        db,
@@ -70,7 +70,7 @@ func (ag *Agent) Query(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := ag.engine.Query(ctx, user.Query{Text: text}, &a)
+	res, err := ag.engine.Query(ctx, user.Query{Text: text}, a)
 	if err != nil {
 		// TODO status
 		http.Error(w, fmt.Sprintf("query: %s", err.Error()), http.StatusBadRequest)
@@ -133,8 +133,8 @@ func (ag *Agent) Create(w http.ResponseWriter, r *http.Request) {
 		"traceID", monitor.TraceID(span))
 
 	reasoner := openai.NewReasoner(token, model, ag.log)
-	a := agent.New(prompt, ag.discovery, reasoner, ag.log)
-	id, err := ag.db.Add(*a)
+	a := function.NewAgent(prompt, ag.discovery, reasoner, ag.log)
+	id, err := ag.db.Add(a)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
