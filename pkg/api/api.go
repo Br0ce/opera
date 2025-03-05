@@ -36,6 +36,7 @@ func NewHTTP(ctx context.Context, log *slog.Logger) (*Api, context.CancelFunc, e
 
 	mux.HandleFunc("POST /v1/agents", agentHandler.Create)
 	mux.HandleFunc(fmt.Sprintf("POST /v1/agents/{%s}", handler.AgentID), agentHandler.Query)
+	mux.HandleFunc(fmt.Sprintf("DELETE /v1/agents/{%s}", handler.AgentID), agentHandler.Delete)
 
 	api := &Api{
 		mux: mux,

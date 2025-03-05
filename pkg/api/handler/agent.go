@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -39,67 +40,6 @@ func NewAgent(engine engine.Engine, db db.Agent, discovery tool.Discovery, log *
 		tr:        monitor.Tracer("AgentHandler"),
 		pr:        monitor.Propagator(),
 		log:       log,
-	}
-}
-func (ag *Agent) Query(w http.ResponseWriter, r *http.Request) {
-	ctx := ag.pr.Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-	ctx, span := ag.tr.Start(ctx, "Query agent")
-	defer span.End()
-	ag.log.Info("query agent", "method", "Query", "traceID", monitor.TraceID(span))
-
-	id := r.PathValue(AgentID)
-
-	err := r.ParseForm()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	text := r.FormValue("text")
-	if text == "" {
-		http.Error(w, "text is empty", http.StatusBadRequest)
-		return
-	}
-	ag.log.Debug("query agent", "method", "Query",
-		"agentID", id,
-		"text", text,
-		"traceID", monitor.TraceID(span))
-
-	a, err := ag.db.Get(id)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("get agent %s: %s", id, err.Error()), http.StatusBadRequest)
-		return
-	}
-
-	res, err := ag.engine.Query(ctx, user.Query{Text: text}, a)
-	if err != nil {
-		// TODO status
-		http.Error(w, fmt.Sprintf("query: %s", err.Error()), http.StatusBadRequest)
-		return
-	}
-
-	err = ag.db.Update(id, a)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("update agent: %s", err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	ans := map[string]string{
-		"object": "answer",
-		"text":   res,
-	}
-	bb, err := json.Marshal(ans)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if u, err := url.ParseRequestURI(r.RequestURI); err == nil {
-		w.Header().Set("Location", path.Join(u.Path, id))
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(bb)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -158,4 +98,87 @@ func (ag *Agent) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func (ag *Agent) Query(w http.ResponseWriter, r *http.Request) {
+	ctx := ag.pr.Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+	ctx, span := ag.tr.Start(ctx, "Query agent")
+	defer span.End()
+
+	id := r.PathValue(AgentID)
+	ag.log.Info("query agent", "method", "Query", "id", id, "traceID", monitor.TraceID(span))
+
+	err := r.ParseForm()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	text := r.FormValue("text")
+	if text == "" {
+		http.Error(w, "text is empty", http.StatusBadRequest)
+		return
+	}
+	ag.log.Debug("query agent", "method", "Query",
+		"agentID", id,
+		"text", text,
+		"traceID", monitor.TraceID(span))
+
+	a, err := ag.db.Get(id)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("get agent %s: %s", id, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	res, err := ag.engine.Query(ctx, user.Query{Text: text}, a)
+	if err != nil {
+		// TODO status
+		http.Error(w, fmt.Sprintf("query: %s", err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	err = ag.db.Update(id, a)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("update agent: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	ans := map[string]string{
+		"object": "answer",
+		"text":   res,
+	}
+	bb, err := json.Marshal(ans)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if u, err := url.ParseRequestURI(r.RequestURI); err == nil {
+		w.Header().Set("Location", path.Join(u.Path, id))
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(bb)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (ag *Agent) Delete(w http.ResponseWriter, r *http.Request) {
+	ctx := ag.pr.Extract(r.Context(), propagation.HeaderCarrier(r.Header))
+	_, span := ag.tr.Start(ctx, "delete agent")
+	defer span.End()
+
+	id := r.PathValue(AgentID)
+	ag.log.Info("delete agent", "method", "Delete", "id", id, "traceID", monitor.TraceID(span))
+
+	err := ag.db.Delete(id)
+	if err != nil {
+		if errors.Is(err, db.ErrNotFound) {
+			http.Error(w, fmt.Sprintf("delete agent: %s", err.Error()), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, fmt.Sprintf("delete agent: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
