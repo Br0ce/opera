@@ -7,18 +7,15 @@ import (
 	"testing"
 	"time"
 
-	"go.opentelemetry.io/otel"
-
+	"github.com/Br0ce/opera/pkg/db/inmem"
 	"github.com/Br0ce/opera/pkg/monitor"
 	"github.com/Br0ce/opera/pkg/tool"
-	"github.com/Br0ce/opera/pkg/tool/db/inmem"
 	"github.com/Br0ce/opera/pkg/tool/discovery/docker"
 	"github.com/Br0ce/opera/pkg/transport"
 )
 
 func TestDiscovery_All(t *testing.T) {
 	log := monitor.NewTestLogger(true)
-	discoveryTracer := otel.Tracer("DockerDiscovery")
 
 	shark, err := tool.MakeTool(
 		tool.WithName("get_shark_warning"),
@@ -71,8 +68,8 @@ func TestDiscovery_All(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			trans := transport.NewHTTP(time.Second*5, log)
-			di, err := docker.NewDiscovery(inmem.NewDB(), trans, discoveryTracer, log)
+			trans := transport.NewHTTP(time.Second * 5)
+			di, err := docker.NewDiscovery(test.ctx, inmem.NewToolDB(), trans, log)
 			if err != nil {
 				t.Fatalf("Discovery.All() new test discovery: %s", err.Error())
 			}
@@ -102,7 +99,6 @@ func TestDiscovery_All(t *testing.T) {
 
 func TestDiscovery_Get(t *testing.T) {
 	log := monitor.NewTestLogger(true)
-	discoveryTracer := otel.Tracer("DockerDiscovery")
 
 	shark, err := tool.MakeTool(
 		tool.WithName("get_shark_warning"),
@@ -160,8 +156,8 @@ func TestDiscovery_Get(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			trans := transport.NewHTTP(time.Second*5, log)
-			di, err := docker.NewDiscovery(inmem.NewDB(), trans, discoveryTracer, log)
+			trans := transport.NewHTTP(time.Second * 5)
+			di, err := docker.NewDiscovery(test.ctx, inmem.NewToolDB(), trans, log)
 			if err != nil {
 				t.Fatalf("Discovery.All() new test discovery: %s", err.Error())
 			}

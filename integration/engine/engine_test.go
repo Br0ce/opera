@@ -9,15 +9,15 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"go.opentelemetry.io/otel"
 
 	"github.com/Br0ce/opera/integration/assert"
 	"github.com/Br0ce/opera/pkg/action"
 	"github.com/Br0ce/opera/pkg/agent"
-	"github.com/Br0ce/opera/pkg/engine"
-	"github.com/Br0ce/opera/pkg/generate/openai"
+	"github.com/Br0ce/opera/pkg/agent/function"
+	"github.com/Br0ce/opera/pkg/db/inmem"
+	"github.com/Br0ce/opera/pkg/engine/loop"
 	"github.com/Br0ce/opera/pkg/monitor"
-	"github.com/Br0ce/opera/pkg/tool/db/inmem"
+	"github.com/Br0ce/opera/pkg/reason/openai"
 	"github.com/Br0ce/opera/pkg/tool/discovery/docker"
 	"github.com/Br0ce/opera/pkg/transport"
 	"github.com/Br0ce/opera/pkg/user"
@@ -33,7 +33,6 @@ func TestEngine_Query(t *testing.T) {
 		t.Fatal("OPENAI_TOKEN env not found")
 	}
 	type fields struct {
-		Agent   *agent.Agent
 		Actor   *action.Actor
 		MaxIter int
 		Log     *slog.Logger
@@ -41,6 +40,7 @@ func TestEngine_Query(t *testing.T) {
 	type args struct {
 		ctx   context.Context
 		query user.Query
+		Agent agent.Agent
 	}
 
 	ctx := context.TODO()
@@ -56,16 +56,17 @@ func TestEngine_Query(t *testing.T) {
 	}()
 
 	log := monitor.NewTestLogger(true)
-	generator := openai.NewGenerator(token, "gpt-4o", otel.Tracer("Generator"), log)
-	trans := transport.NewHTTP(time.Second*5, log)
-	discovery, err := docker.NewDiscovery(inmem.NewDB(), trans, otel.Tracer("DockerDiscovery"), log)
+	trans := transport.NewHTTP(time.Second * 5)
+	discovery, err := docker.NewDiscovery(ctx, inmem.NewToolDB(), trans, log)
 	// discovery, err := config.NewDiscovery(ctx, "../../data/discovery/tools.json", db, otel.Tracer("ConfigDiscovery"), log)
 	if err != nil {
 		t.Fatalf("new discovery: %s", err.Error())
 	}
-	agent := agent.New("You are a  friendly assistent!", discovery, generator, otel.Tracer("Agent"), log)
-	transporter := transport.NewHTTP(time.Second*30, log)
-	actor := action.NewActor(discovery, transporter, otel.Tracer("Actor"), log)
+
+	reasoner := openai.NewReasoner(token, "gpt-4o", log)
+	agent := function.NewAgent("You are a  friendly assistent!", discovery, reasoner, log)
+	transporter := transport.NewHTTP(time.Second * 30)
+	actor := action.NewActor(discovery, transporter, log)
 
 	tests := []struct {
 		name    string
@@ -77,7 +78,6 @@ func TestEngine_Query(t *testing.T) {
 		{
 			name: "integraion",
 			fields: fields{
-				Agent:   agent,
 				Actor:   actor,
 				MaxIter: 5,
 				Log:     log,
@@ -85,6 +85,7 @@ func TestEngine_Query(t *testing.T) {
 			args: args{
 				ctx:   ctx,
 				query: user.Query{Text: "Could you recommend surfing in Sydney at the moment?"},
+				Agent: agent,
 			},
 			want: "The weather in Sydney is 30 degrees and surfing is not recommended.",
 		},
@@ -92,14 +93,8 @@ func TestEngine_Query(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			eg := &engine.Engine{
-				Agent:   test.fields.Agent,
-				Actor:   test.fields.Actor,
-				MaxIter: test.fields.MaxIter,
-				Tr:      otel.Tracer("Engine"),
-				Log:     test.fields.Log,
-			}
-			got, err := eg.Query(test.args.ctx, test.args.query)
+			eg := loop.NewEngine(test.fields.Actor, test.fields.MaxIter, test.fields.Log)
+			got, err := eg.Query(test.args.ctx, test.args.query, test.args.Agent)
 			if (err != nil) != test.wantErr {
 				t.Errorf("Engine.Query() error = %v, wantErr %v", err, test.wantErr)
 				return

@@ -8,12 +8,14 @@ import (
 	"log/slog"
 	"net/url"
 	"slices"
+	"sync"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/Br0ce/opera/pkg/db"
 	"github.com/Br0ce/opera/pkg/monitor"
 	"github.com/Br0ce/opera/pkg/tool"
 )
@@ -36,25 +38,32 @@ type Transporter interface {
 }
 
 type Discovery struct {
-	db        tool.DB
+	db        db.Tool
 	client    client.APIClient
 	transport Transporter
+	mu        sync.RWMutex
 	tr        trace.Tracer
 	log       *slog.Logger
 }
 
-func NewDiscovery(db tool.DB, transport Transporter, tracer trace.Tracer, log *slog.Logger) (*Discovery, error) {
+// NewDiscovery returns a pointer to a refreshed Discovery.
+func NewDiscovery(ctx context.Context, db db.Tool, transport Transporter, log *slog.Logger) (*Discovery, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("new docker client: %w", err)
 	}
-	return &Discovery{
+	di := &Discovery{
 		db:        db,
 		client:    cli,
 		transport: transport,
-		tr:        tracer,
+		tr:        monitor.Tracer("DockerDiscovery"),
 		log:       log,
-	}, nil
+	}
+	err = di.Refresh(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("refresh: %w", err)
+	}
+	return di, nil
 }
 
 // Get returns the Tool for the given name from the database.
@@ -62,6 +71,9 @@ func (di *Discovery) Get(ctx context.Context, name string) (tool.Tool, error) {
 	_, span := di.tr.Start(ctx, "get tool")
 	defer span.End()
 	di.log.Debug("get tool", "method", "Get", "name", name, "traceID", monitor.TraceID(span))
+
+	di.mu.RLock()
+	defer di.mu.RUnlock()
 
 	to, err := di.db.Get(name)
 	if err != nil {
@@ -75,6 +87,9 @@ func (di *Discovery) All(ctx context.Context) []tool.Tool {
 	_, span := di.tr.Start(ctx, "get all tools")
 	defer span.End()
 	di.log.Debug("get all tools", "method", "All", "traceID", monitor.TraceID(span))
+
+	di.mu.RLock()
+	defer di.mu.RUnlock()
 
 	return slices.Collect(di.db.All())
 }
@@ -93,6 +108,9 @@ func (di *Discovery) Refresh(ctx context.Context) error {
 
 	errChan := make(chan error, len(conts))
 	defer close(errChan)
+
+	// Hold lock so that the db is not deleted while it is being read.
+	di.mu.Lock()
 
 	di.db.Clear()
 	for _, cont := range conts {
@@ -121,6 +139,8 @@ func (di *Discovery) Refresh(ctx context.Context) error {
 	for range len(conts) {
 		addErr = errors.Join(addErr, <-errChan)
 	}
+	di.mu.Unlock()
+
 	return addErr
 }
 

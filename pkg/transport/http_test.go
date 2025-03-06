@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -20,11 +19,8 @@ import (
 func TestHTTPTransportPost(t *testing.T) {
 	t.Parallel()
 
-	log := monitor.NewTestLogger(false)
-
 	type fields struct {
 		timeout time.Duration
-		log     *slog.Logger
 	}
 
 	tests := []struct {
@@ -40,7 +36,6 @@ func TestHTTPTransportPost(t *testing.T) {
 			name: "pass",
 			fields: fields{
 				timeout: time.Second,
-				log:     log,
 			},
 			header: map[string][]string{
 				"content-type": {"application/json"},
@@ -76,7 +71,6 @@ func TestHTTPTransportPost(t *testing.T) {
 			name: "fail",
 			fields: fields{
 				timeout: time.Second,
-				log:     log,
 			},
 			wantErr: true,
 			mockUpstream: func(w http.ResponseWriter, r *http.Request) {
@@ -87,7 +81,6 @@ func TestHTTPTransportPost(t *testing.T) {
 			name: "timeout",
 			fields: fields{
 				timeout: time.Microsecond,
-				log:     log,
 			},
 			wantErr: true,
 			mockUpstream: func(w http.ResponseWriter, r *http.Request) {
@@ -102,7 +95,7 @@ func TestHTTPTransportPost(t *testing.T) {
 				srv := httptest.NewServer(test.mockUpstream)
 				defer srv.Close()
 
-				transport := NewHTTP(test.fields.timeout, test.fields.log)
+				transport := NewHTTP(test.fields.timeout)
 				got, err := transport.Post(context.TODO(), srv.URL, test.header, test.body)
 				if (err != nil) != test.wantErr {
 					t.Errorf("error, error = %s, wantErr %v", err.Error(), test.wantErr)
@@ -132,7 +125,7 @@ func TestHTTPTransportPostTimeout(t *testing.T) {
 
 	timeout := time.Microsecond
 
-	transport := NewHTTP(timeout, monitor.NewLogger(false))
+	transport := NewHTTP(timeout)
 	_, err := transport.Post(context.TODO(), srv.URL, nil, nil)
 	if err == nil {
 		t.Errorf("error, error != nil")
@@ -172,7 +165,7 @@ func TestHTTPTransportPostTraceIDPropagation(t *testing.T) {
 		}))
 	defer srv.Close()
 
-	transport := NewHTTP(time.Second, monitor.NewTestLogger(false))
+	transport := NewHTTP(time.Second)
 	_, err = transport.Post(ctx, srv.URL, nil, nil)
 	if err != nil {
 		t.Fatalf("transport: %s", err.Error())
@@ -182,11 +175,8 @@ func TestHTTPTransportPostTraceIDPropagation(t *testing.T) {
 func TestHTTPTransportGet(t *testing.T) {
 	t.Parallel()
 
-	log := monitor.NewTestLogger(false)
-
 	type fields struct {
 		timeout time.Duration
-		log     *slog.Logger
 	}
 
 	tests := []struct {
@@ -201,7 +191,6 @@ func TestHTTPTransportGet(t *testing.T) {
 			name: "pass",
 			fields: fields{
 				timeout: time.Second,
-				log:     log,
 			},
 			header: map[string][]string{
 				"content-type": {"application/json"},
@@ -226,7 +215,6 @@ func TestHTTPTransportGet(t *testing.T) {
 			name: "fail",
 			fields: fields{
 				timeout: time.Second,
-				log:     log,
 			},
 			wantErr: true,
 			mockUpstream: func(w http.ResponseWriter, r *http.Request) {
@@ -237,7 +225,6 @@ func TestHTTPTransportGet(t *testing.T) {
 			name: "timeout",
 			fields: fields{
 				timeout: time.Microsecond,
-				log:     log,
 			},
 			wantErr: true,
 			mockUpstream: func(w http.ResponseWriter, r *http.Request) {
@@ -252,7 +239,7 @@ func TestHTTPTransportGet(t *testing.T) {
 				srv := httptest.NewServer(test.mockUpstream)
 				defer srv.Close()
 
-				transport := NewHTTP(test.fields.timeout, test.fields.log)
+				transport := NewHTTP(test.fields.timeout)
 				got, err := transport.Get(context.TODO(), srv.URL, test.header)
 				if (err != nil) != test.wantErr {
 					t.Errorf("error, error = %s, wantErr %v", err.Error(), test.wantErr)
@@ -282,7 +269,7 @@ func TestHTTPTransportGetTimeout(t *testing.T) {
 
 	timeout := time.Microsecond
 
-	transport := NewHTTP(timeout, monitor.NewLogger(false))
+	transport := NewHTTP(timeout)
 	_, err := transport.Get(context.TODO(), srv.URL, nil)
 	if err == nil {
 		t.Errorf("error, error != nil")
@@ -322,7 +309,7 @@ func TestHTTPTransportGetTraceIDPropagation(t *testing.T) {
 		}))
 	defer srv.Close()
 
-	transport := NewHTTP(time.Second, monitor.NewTestLogger(false))
+	transport := NewHTTP(time.Second)
 	_, err = transport.Get(ctx, srv.URL, nil)
 	if err != nil {
 		t.Fatalf("transport: %s", err.Error())

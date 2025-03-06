@@ -15,32 +15,32 @@ import (
 	"github.com/Br0ce/opera/pkg/tool"
 )
 
-type Generator struct {
+type Reasoner struct {
 	client *openai.Client
 	model  string
 	tr     trace.Tracer
 	log    *slog.Logger
 }
 
-func NewGenerator(token string, modelName string, tracer trace.Tracer, log *slog.Logger) *Generator {
-	return &Generator{
+func NewReasoner(token string, modelName string, log *slog.Logger) *Reasoner {
+	return &Reasoner{
 		client: openai.NewClient(option.WithAPIKey(token)),
 		model:  modelName,
-		tr:     tracer,
+		tr:     monitor.Tracer("Generator"),
 		log:    log,
 	}
 }
 
-func (ge *Generator) Generate(ctx context.Context, hist history.History, tools []tool.Tool) (action.Action, error) {
-	ctx, span := ge.tr.Start(ctx, "chat request")
+func (re *Reasoner) Reason(ctx context.Context, hist history.History, tools []tool.Tool) (action.Action, error) {
+	ctx, span := re.tr.Start(ctx, "reason about the history")
 	defer span.End()
-	ge.log.Debug("execute chat request to openai",
-		"method", "Generate",
+	re.log.Debug("execute chat request to openai",
+		"method", "Reason",
 		"traceID", monitor.TraceID(span))
 
-	chat, err := ge.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+	chat, err := re.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Messages: openai.F(messages(hist)),
-		Model:    openai.F(ge.model),
+		Model:    openai.F(re.model),
 		Tools:    openai.F(toolParams(tools)),
 	})
 	if err != nil {

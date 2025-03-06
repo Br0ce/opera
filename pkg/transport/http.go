@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -16,24 +15,20 @@ import (
 type HTTPTransporter struct {
 	client  http.Client
 	timeout time.Duration
-	log     *slog.Logger
 }
 
-func NewHTTP(timeout time.Duration, log *slog.Logger) *HTTPTransporter {
+func NewHTTP(timeout time.Duration) *HTTPTransporter {
 	cl := http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 	return &HTTPTransporter{
 		client:  cl,
 		timeout: timeout,
-		log:     log,
 	}
 }
 
 // Post exectutes an http post request.
 func (tp *HTTPTransporter) Post(ctx context.Context, addr string, header map[string][]string, body io.Reader) ([]byte, error) {
-	tp.log.Debug("post request", "method", "Post", "addr", addr)
-
 	timeout, cancel := context.WithTimeout(ctx, tp.timeout)
 	defer cancel()
 
@@ -47,8 +42,6 @@ func (tp *HTTPTransporter) Post(ctx context.Context, addr string, header map[str
 
 // Get exectutes an http post request.
 func (tp *HTTPTransporter) Get(ctx context.Context, addr string, header map[string][]string) ([]byte, error) {
-	tp.log.Debug("get request", "method", "Get", "addr", addr)
-
 	timeout, cancel := context.WithTimeout(ctx, tp.timeout)
 	defer cancel()
 
@@ -61,8 +54,6 @@ func (tp *HTTPTransporter) Get(ctx context.Context, addr string, header map[stri
 }
 
 func (tp *HTTPTransporter) do(header http.Header, request *http.Request) ([]byte, error) {
-	tp.log.Debug("execute request", "method", "do")
-
 	request.Header = header
 
 	response, err := tp.client.Do(request)
