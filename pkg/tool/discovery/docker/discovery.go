@@ -10,7 +10,6 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"go.opentelemetry.io/otel/trace"
@@ -115,7 +114,7 @@ func (di *Discovery) Refresh(ctx context.Context) error {
 	di.db.Clear()
 	for _, cont := range conts {
 		di.log.Debug("loop containers", "method", "Refresh", "imageTag", cont.Image)
-		go func(ctx context.Context, cont types.Container) {
+		go func(ctx context.Context, cont container.Summary) {
 			tool, err := di.toTool(ctx, cont)
 			if err != nil {
 				if errors.Is(err, errNotTool) {
@@ -145,7 +144,7 @@ func (di *Discovery) Refresh(ctx context.Context) error {
 }
 
 // toTool returns a Tool for the given container. If the container is not a Tool an ErrNotTool is returned.
-func (di *Discovery) toTool(ctx context.Context, container types.Container) (tool.Tool, error) {
+func (di *Discovery) toTool(ctx context.Context, container container.Summary) (tool.Tool, error) {
 	di.log.Debug("get tool for container", "method", "toTool", "containerImage", container.Image)
 
 	tName, okName := container.Labels[name]
@@ -200,7 +199,7 @@ func (di *Discovery) config(ctx context.Context, addr url.URL) (config, error) {
 }
 
 // containers returns all containers found on the docker socket.
-func (di *Discovery) containers(ctx context.Context) ([]types.Container, error) {
+func (di *Discovery) containers(ctx context.Context) ([]container.Summary, error) {
 	defer di.client.Close()
 	containers, err := di.client.ContainerList(ctx, container.ListOptions{All: false})
 	if err != nil {
