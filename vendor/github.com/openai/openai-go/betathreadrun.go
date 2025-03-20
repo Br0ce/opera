@@ -16,6 +16,7 @@ import (
 	"github.com/openai/openai-go/option"
 	"github.com/openai/openai-go/packages/pagination"
 	"github.com/openai/openai-go/packages/ssestream"
+	"github.com/openai/openai-go/shared"
 )
 
 // BetaThreadRunService contains methods and other services that help with
@@ -323,10 +324,12 @@ type Run struct {
 	// of the run.
 	MaxPromptTokens int64 `json:"max_prompt_tokens,required,nullable"`
 	// Set of 16 key-value pairs that can be attached to an object. This can be useful
-	// for storing additional information about the object in a structured format. Keys
-	// can be a maximum of 64 characters long and values can be a maximum of 512
-	// characters long.
-	Metadata interface{} `json:"metadata,required,nullable"`
+	// for storing additional information about the object in a structured format, and
+	// querying for objects via API or the dashboard.
+	//
+	// Keys are strings with a maximum length of 64 characters. Values are strings with
+	// a maximum length of 512 characters.
+	Metadata shared.Metadata `json:"metadata,required,nullable"`
 	// The model that the
 	// [assistant](https://platform.openai.com/docs/api-reference/assistants) used for
 	// this run.
@@ -718,19 +721,28 @@ type BetaThreadRunNewParams struct {
 	// `incomplete_details` for more info.
 	MaxPromptTokens param.Field[int64] `json:"max_prompt_tokens"`
 	// Set of 16 key-value pairs that can be attached to an object. This can be useful
-	// for storing additional information about the object in a structured format. Keys
-	// can be a maximum of 64 characters long and values can be a maximum of 512
-	// characters long.
-	Metadata param.Field[interface{}] `json:"metadata"`
+	// for storing additional information about the object in a structured format, and
+	// querying for objects via API or the dashboard.
+	//
+	// Keys are strings with a maximum length of 64 characters. Values are strings with
+	// a maximum length of 512 characters.
+	Metadata param.Field[shared.MetadataParam] `json:"metadata"`
 	// The ID of the [Model](https://platform.openai.com/docs/api-reference/models) to
 	// be used to execute this run. If a value is provided here, it will override the
 	// model associated with the assistant. If not, the model associated with the
 	// assistant will be used.
-	Model param.Field[ChatModel] `json:"model"`
+	Model param.Field[shared.ChatModel] `json:"model"`
 	// Whether to enable
 	// [parallel function calling](https://platform.openai.com/docs/guides/function-calling#configuring-parallel-function-calling)
 	// during tool use.
 	ParallelToolCalls param.Field[bool] `json:"parallel_tool_calls"`
+	// **o1 and o3-mini models only**
+	//
+	// Constrains effort on reasoning for
+	// [reasoning models](https://platform.openai.com/docs/guides/reasoning). Currently
+	// supported values are `low`, `medium`, and `high`. Reducing reasoning effort can
+	// result in faster responses and fewer tokens used on reasoning in a response.
+	ReasoningEffort param.Field[BetaThreadRunNewParamsReasoningEffort] `json:"reasoning_effort"`
 	// What sampling temperature to use, between 0 and 2. Higher values like 0.8 will
 	// make the output more random, while lower values like 0.2 will make it more
 	// focused and deterministic.
@@ -785,10 +797,12 @@ type BetaThreadRunNewParamsAdditionalMessage struct {
 	// A list of files attached to the message, and the tools they should be added to.
 	Attachments param.Field[[]BetaThreadRunNewParamsAdditionalMessagesAttachment] `json:"attachments"`
 	// Set of 16 key-value pairs that can be attached to an object. This can be useful
-	// for storing additional information about the object in a structured format. Keys
-	// can be a maximum of 64 characters long and values can be a maximum of 512
-	// characters long.
-	Metadata param.Field[interface{}] `json:"metadata"`
+	// for storing additional information about the object in a structured format, and
+	// querying for objects via API or the dashboard.
+	//
+	// Keys are strings with a maximum length of 64 characters. Values are strings with
+	// a maximum length of 512 characters.
+	Metadata param.Field[shared.MetadataParam] `json:"metadata"`
 }
 
 func (r BetaThreadRunNewParamsAdditionalMessage) MarshalJSON() (data []byte, err error) {
@@ -889,6 +903,28 @@ func (r BetaThreadRunNewParamsAdditionalMessagesAttachmentsToolsType) IsKnown() 
 	return false
 }
 
+// **o1 and o3-mini models only**
+//
+// Constrains effort on reasoning for
+// [reasoning models](https://platform.openai.com/docs/guides/reasoning). Currently
+// supported values are `low`, `medium`, and `high`. Reducing reasoning effort can
+// result in faster responses and fewer tokens used on reasoning in a response.
+type BetaThreadRunNewParamsReasoningEffort string
+
+const (
+	BetaThreadRunNewParamsReasoningEffortLow    BetaThreadRunNewParamsReasoningEffort = "low"
+	BetaThreadRunNewParamsReasoningEffortMedium BetaThreadRunNewParamsReasoningEffort = "medium"
+	BetaThreadRunNewParamsReasoningEffortHigh   BetaThreadRunNewParamsReasoningEffort = "high"
+)
+
+func (r BetaThreadRunNewParamsReasoningEffort) IsKnown() bool {
+	switch r {
+	case BetaThreadRunNewParamsReasoningEffortLow, BetaThreadRunNewParamsReasoningEffortMedium, BetaThreadRunNewParamsReasoningEffortHigh:
+		return true
+	}
+	return false
+}
+
 // Controls for how a thread will be truncated prior to the run. Use this to
 // control the intial context window of the run.
 type BetaThreadRunNewParamsTruncationStrategy struct {
@@ -927,10 +963,12 @@ func (r BetaThreadRunNewParamsTruncationStrategyType) IsKnown() bool {
 
 type BetaThreadRunUpdateParams struct {
 	// Set of 16 key-value pairs that can be attached to an object. This can be useful
-	// for storing additional information about the object in a structured format. Keys
-	// can be a maximum of 64 characters long and values can be a maximum of 512
-	// characters long.
-	Metadata param.Field[interface{}] `json:"metadata"`
+	// for storing additional information about the object in a structured format, and
+	// querying for objects via API or the dashboard.
+	//
+	// Keys are strings with a maximum length of 64 characters. Values are strings with
+	// a maximum length of 512 characters.
+	Metadata param.Field[shared.MetadataParam] `json:"metadata"`
 }
 
 func (r BetaThreadRunUpdateParams) MarshalJSON() (data []byte, err error) {

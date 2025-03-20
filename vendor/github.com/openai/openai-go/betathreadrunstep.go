@@ -16,6 +16,7 @@ import (
 	"github.com/openai/openai-go/internal/requestconfig"
 	"github.com/openai/openai-go/option"
 	"github.com/openai/openai-go/packages/pagination"
+	"github.com/openai/openai-go/shared"
 	"github.com/tidwall/gjson"
 )
 
@@ -701,7 +702,8 @@ func (r fileSearchToolCallFileSearchJSON) RawJSON() string {
 
 // The ranking options for the file search.
 type FileSearchToolCallFileSearchRankingOptions struct {
-	// The ranker used for the file search.
+	// The ranker to use for the file search. If not specified will use the `auto`
+	// ranker.
 	Ranker FileSearchToolCallFileSearchRankingOptionsRanker `json:"ranker,required"`
 	// The score threshold for the file search. All values must be a floating point
 	// number between 0 and 1.
@@ -726,16 +728,18 @@ func (r fileSearchToolCallFileSearchRankingOptionsJSON) RawJSON() string {
 	return r.raw
 }
 
-// The ranker used for the file search.
+// The ranker to use for the file search. If not specified will use the `auto`
+// ranker.
 type FileSearchToolCallFileSearchRankingOptionsRanker string
 
 const (
+	FileSearchToolCallFileSearchRankingOptionsRankerAuto              FileSearchToolCallFileSearchRankingOptionsRanker = "auto"
 	FileSearchToolCallFileSearchRankingOptionsRankerDefault2024_08_21 FileSearchToolCallFileSearchRankingOptionsRanker = "default_2024_08_21"
 )
 
 func (r FileSearchToolCallFileSearchRankingOptionsRanker) IsKnown() bool {
 	switch r {
-	case FileSearchToolCallFileSearchRankingOptionsRankerDefault2024_08_21:
+	case FileSearchToolCallFileSearchRankingOptionsRankerAuto, FileSearchToolCallFileSearchRankingOptionsRankerDefault2024_08_21:
 		return true
 	}
 	return false
@@ -1127,10 +1131,12 @@ type RunStep struct {
 	// errors.
 	LastError RunStepLastError `json:"last_error,required,nullable"`
 	// Set of 16 key-value pairs that can be attached to an object. This can be useful
-	// for storing additional information about the object in a structured format. Keys
-	// can be a maximum of 64 characters long and values can be a maximum of 512
-	// characters long.
-	Metadata interface{} `json:"metadata,required,nullable"`
+	// for storing additional information about the object in a structured format, and
+	// querying for objects via API or the dashboard.
+	//
+	// Keys are strings with a maximum length of 64 characters. Values are strings with
+	// a maximum length of 512 characters.
+	Metadata shared.Metadata `json:"metadata,required,nullable"`
 	// The object type, which is always `thread.run.step`.
 	Object RunStepObject `json:"object,required"`
 	// The ID of the [run](https://platform.openai.com/docs/api-reference/runs) that
