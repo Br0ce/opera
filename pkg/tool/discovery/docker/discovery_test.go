@@ -16,19 +16,18 @@ import (
 	"github.com/Br0ce/opera/pkg/monitor"
 	"github.com/Br0ce/opera/pkg/tool"
 	mockTransport "github.com/Br0ce/opera/pkg/transport/mock"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 )
 
 type mockClient struct {
 	client.APIClient
-	containerListFn func(ctx context.Context, options container.ListOptions) ([]types.Container, error)
+	containerListFn func(ctx context.Context, options container.ListOptions) ([]container.Summary, error)
 	contListInvoked bool
 	closeInvoked    bool
 }
 
-func (mc *mockClient) ContainerList(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
+func (mc *mockClient) ContainerList(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
 	mc.contListInvoked = true
 	return mc.containerListFn(ctx, options)
 }
@@ -152,7 +151,9 @@ func TestDiscovery_All(t *testing.T) {
 			allFn: func() iter.Seq[tool.Tool] {
 				return func(yield func(tool.Tool) bool) {
 					for _, t := range tools {
-						yield(t)
+						if !yield(t) {
+							return
+						}
 					}
 				}
 			},
@@ -204,7 +205,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 		name             string
 		ctx              context.Context
 		clearInvoked     bool
-		listContainersFn func(ctx context.Context, options container.ListOptions) ([]types.Container, error)
+		listContainersFn func(ctx context.Context, options container.ListOptions) ([]container.Summary, error)
 		contListInvoked  bool
 		closeInvoked     bool
 		getFn            func(ctx context.Context, addr string, header map[string][]string) ([]byte, error)
@@ -216,7 +217,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 		{
 			name: "client error",
 			ctx:  context.TODO(),
-			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
+			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
 				return nil, errors.New("some error")
 			},
 			clearInvoked:    false,
@@ -230,8 +231,8 @@ func TestDiscovery_Refresh(t *testing.T) {
 			name:         "no tool containers",
 			ctx:          context.TODO(),
 			clearInvoked: true,
-			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
-				return []types.Container{
+			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+				return []container.Summary{
 					{
 						Image: "cont1",
 					},
@@ -250,8 +251,8 @@ func TestDiscovery_Refresh(t *testing.T) {
 			name:         "transport error",
 			ctx:          context.TODO(),
 			clearInvoked: true,
-			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
-				return []types.Container{
+			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+				return []container.Summary{
 					{
 						Image: "tool",
 						Labels: map[string]string{
@@ -280,8 +281,8 @@ func TestDiscovery_Refresh(t *testing.T) {
 			name:         "invalid config error",
 			ctx:          context.TODO(),
 			clearInvoked: true,
-			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
-				return []types.Container{
+			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+				return []container.Summary{
 					{
 						Image: "tool",
 						Labels: map[string]string{
@@ -328,8 +329,8 @@ func TestDiscovery_Refresh(t *testing.T) {
 			name:         "add tool error",
 			ctx:          context.TODO(),
 			clearInvoked: true,
-			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
-				return []types.Container{
+			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+				return []container.Summary{
 					{
 						Image: "tool",
 						Labels: map[string]string{
@@ -379,8 +380,8 @@ func TestDiscovery_Refresh(t *testing.T) {
 			name:         "one tool",
 			ctx:          context.TODO(),
 			clearInvoked: true,
-			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
-				return []types.Container{
+			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+				return []container.Summary{
 					{
 						Image: "tool",
 						Labels: map[string]string{
@@ -446,8 +447,8 @@ func TestDiscovery_Refresh(t *testing.T) {
 			name:         "two tools",
 			ctx:          context.TODO(),
 			clearInvoked: true,
-			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
-				return []types.Container{
+			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+				return []container.Summary{
 					{
 						Image: "tool",
 						Labels: map[string]string{
@@ -660,7 +661,7 @@ func TestDiscovery_config(t *testing.T) {
 func TestDiscovery_toTool(t *testing.T) {
 	t.Parallel()
 
-	toolContainer := types.Container{
+	toolContainer := container.Summary{
 		Image: "myImage",
 		Labels: map[string]string{
 			name:         "myTool",
@@ -684,7 +685,7 @@ func TestDiscovery_toTool(t *testing.T) {
 		t.Fatalf("test tool")
 	}
 
-	otherContainer := types.Container{
+	otherContainer := container.Summary{
 		Image: "otherImage",
 		Labels: map[string]string{
 			name: "myTool",
@@ -695,7 +696,7 @@ func TestDiscovery_toTool(t *testing.T) {
 	tests := []struct {
 		name           string
 		ctx            context.Context
-		container      types.Container
+		container      container.Summary
 		transportGetFn func(ctx context.Context, addr string, header map[string][]string) ([]byte, error)
 		wantInvoked    bool
 		wantErr        bool
@@ -800,47 +801,47 @@ func TestDiscovery_toTool(t *testing.T) {
 func TestDiscovery_containers(t *testing.T) {
 	t.Parallel()
 
-	cont1 := types.Container{
+	cont1 := container.Summary{
 		Image: "myImage",
 	}
-	cont2 := types.Container{
+	cont2 := container.Summary{
 		Image: "myOtherImage",
 	}
 
 	tests := []struct {
 		name                string
-		containerListFn     func(ctx context.Context, options container.ListOptions) ([]types.Container, error)
+		containerListFn     func(ctx context.Context, options container.ListOptions) ([]container.Summary, error)
 		wantContlistInvoked bool
 		wantCloseInvoked    bool
 		ctx                 context.Context
-		want                []types.Container
+		want                []container.Summary
 		wantErr             bool
 	}{
 		{
 			name: "empty list",
-			containerListFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
-				return []types.Container{}, nil
+			containerListFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+				return []container.Summary{}, nil
 			},
 			ctx:                 context.TODO(),
-			want:                []types.Container{},
+			want:                []container.Summary{},
 			wantContlistInvoked: true,
 			wantCloseInvoked:    true,
 			wantErr:             false,
 		},
 		{
 			name: "pass",
-			containerListFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
-				return []types.Container{cont1, cont2}, nil
+			containerListFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+				return []container.Summary{cont1, cont2}, nil
 			},
 			ctx:                 context.TODO(),
-			want:                []types.Container{cont1, cont2},
+			want:                []container.Summary{cont1, cont2},
 			wantContlistInvoked: true,
 			wantCloseInvoked:    true,
 			wantErr:             false,
 		},
 		{
 			name: "client error",
-			containerListFn: func(ctx context.Context, options container.ListOptions) ([]types.Container, error) {
+			containerListFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
 				return nil, errors.New("some error")
 			},
 			ctx:                 context.TODO(),

@@ -106,7 +106,7 @@ type Upload struct {
 	Bytes int64 `json:"bytes,required"`
 	// The Unix timestamp (in seconds) for when the Upload was created.
 	CreatedAt int64 `json:"created_at,required"`
-	// The Unix timestamp (in seconds) for when the Upload was created.
+	// The Unix timestamp (in seconds) for when the Upload will expire.
 	ExpiresAt int64 `json:"expires_at,required"`
 	// The name of the file to be uploaded.
 	Filename string `json:"filename,required"`
@@ -118,7 +118,7 @@ type Upload struct {
 	Purpose string `json:"purpose,required"`
 	// The status of the Upload.
 	Status UploadStatus `json:"status,required"`
-	// The ready File object after the Upload is completed.
+	// The `File` object represents a document that has been uploaded to OpenAI.
 	File FileObject `json:"file,nullable"`
 	JSON uploadJSON `json:"-"`
 }

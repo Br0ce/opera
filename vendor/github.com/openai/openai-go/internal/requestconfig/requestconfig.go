@@ -10,6 +10,7 @@ import (
 	"io"
 	"math"
 	"math/rand"
+	"mime"
 	"net/http"
 	"net/url"
 	"runtime"
@@ -21,6 +22,7 @@ import (
 	"github.com/openai/openai-go/internal/apierror"
 	"github.com/openai/openai-go/internal/apiform"
 	"github.com/openai/openai-go/internal/apiquery"
+	"github.com/openai/openai-go/internal/param"
 )
 
 func getDefaultHeaders() map[string]string {
@@ -76,7 +78,17 @@ func getPlatformProperties() map[string]string {
 	}
 }
 
-func NewRequestConfig(ctx context.Context, method string, u string, body interface{}, dst interface{}, opts ...func(*RequestConfig) error) (*RequestConfig, error) {
+type RequestOption interface {
+	Apply(*RequestConfig) error
+}
+
+type RequestOptionFunc func(*RequestConfig) error
+type PreRequestOptionFunc func(*RequestConfig) error
+
+func (s RequestOptionFunc) Apply(r *RequestConfig) error    { return s(r) }
+func (s PreRequestOptionFunc) Apply(r *RequestConfig) error { return s(r) }
+
+func NewRequestConfig(ctx context.Context, method string, u string, body interface{}, dst interface{}, opts ...RequestOption) (*RequestConfig, error) {
 	var reader io.Reader
 
 	contentType := "application/json"
@@ -138,6 +150,7 @@ func NewRequestConfig(ctx context.Context, method string, u string, body interfa
 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("X-Stainless-Retry-Count", "0")
+	req.Header.Set("X-Stainless-Timeout", "0")
 	for k, v := range getDefaultHeaders() {
 		req.Header.Add(k, v)
 	}
@@ -157,13 +170,32 @@ func NewRequestConfig(ctx context.Context, method string, u string, body interfa
 	if err != nil {
 		return nil, err
 	}
+
+	// This must run after `cfg.Apply(...)` above in case the request timeout gets modified. We also only
+	// apply our own logic for it if it's still "0" from above. If it's not, then it was deleted or modified
+	// by the user and we should respect that.
+	if req.Header.Get("X-Stainless-Timeout") == "0" {
+		if cfg.RequestTimeout == time.Duration(0) {
+			req.Header.Del("X-Stainless-Timeout")
+		} else {
+			req.Header.Set("X-Stainless-Timeout", strconv.Itoa(int(cfg.RequestTimeout.Seconds())))
+		}
+	}
+
 	return &cfg, nil
+}
+
+func UseDefaultParam[T any](dst *param.Field[T], src *T) {
+	if !dst.Present && src != nil {
+		dst.Value = *src
+		dst.Present = true
+	}
 }
 
 // RequestConfig represents all the state related to one request.
 //
 // Editing the variables inside RequestConfig directly is unstable api. Prefer
-// composing func(\*RequestConfig) error instead if possible.
+// composing the RequestOption instead if possible.
 type RequestConfig struct {
 	MaxRetries     int
 	RequestTimeout time.Duration
@@ -281,6 +313,41 @@ func parseRetryAfterHeader(resp *http.Response) (time.Duration, bool) {
 	return 0, false
 }
 
+// isBeforeContextDeadline reports whether the non-zero Time t is
+// before ctx's deadline. If ctx does not have a deadline, it
+// always reports true (the deadline is considered infinite).
+func isBeforeContextDeadline(t time.Time, ctx context.Context) bool {
+	d, ok := ctx.Deadline()
+	if !ok {
+		return true
+	}
+	return t.Before(d)
+}
+
+// bodyWithTimeout is an io.ReadCloser which can observe a context's cancel func
+// to handle timeouts etc. It wraps an existing io.ReadCloser.
+type bodyWithTimeout struct {
+	stop func() // stops the time.Timer waiting to cancel the request
+	rc   io.ReadCloser
+}
+
+func (b *bodyWithTimeout) Read(p []byte) (n int, err error) {
+	n, err = b.rc.Read(p)
+	if err == nil {
+		return n, nil
+	}
+	if err == io.EOF {
+		return n, err
+	}
+	return n, err
+}
+
+func (b *bodyWithTimeout) Close() error {
+	err := b.rc.Close()
+	b.stop()
+	return err
+}
+
 func retryDelay(res *http.Response, retryCount int) time.Duration {
 	// If the API asks us to wait a certain amount of time (and it's a reasonable amount),
 	// just do what it says.
@@ -342,12 +409,17 @@ func (cfg *RequestConfig) Execute() (err error) {
 	shouldSendRetryCount := cfg.Request.Header.Get("X-Stainless-Retry-Count") == "0"
 
 	var res *http.Response
+	var cancel context.CancelFunc
 	for retryCount := 0; retryCount <= cfg.MaxRetries; retryCount += 1 {
 		ctx := cfg.Request.Context()
-		if cfg.RequestTimeout != time.Duration(0) {
-			var cancel context.CancelFunc
+		if cfg.RequestTimeout != time.Duration(0) && isBeforeContextDeadline(time.Now().Add(cfg.RequestTimeout), ctx) {
 			ctx, cancel = context.WithTimeout(ctx, cfg.RequestTimeout)
-			defer cancel()
+			defer func() {
+				// The cancel function is nil if it was handed off to be handled in a different scope.
+				if cancel != nil {
+					cancel()
+				}
+			}()
 		}
 
 		req := cfg.Request.Clone(ctx)
@@ -415,10 +487,15 @@ func (cfg *RequestConfig) Execute() (err error) {
 		return &aerr
 	}
 
-	if cfg.ResponseBodyInto == nil {
-		return nil
-	}
-	if _, ok := cfg.ResponseBodyInto.(**http.Response); ok {
+	_, intoCustomResponseBody := cfg.ResponseBodyInto.(**http.Response)
+	if cfg.ResponseBodyInto == nil || intoCustomResponseBody {
+		// We aren't reading the response body in this scope, but whoever is will need the
+		// cancel func from the context to observe request timeouts.
+		// Put the cancel function in the response body so it can be handled elsewhere.
+		if cancel != nil {
+			res.Body = &bodyWithTimeout{rc: res.Body, stop: cancel}
+			cancel = nil
+		}
 		return nil
 	}
 
@@ -429,7 +506,8 @@ func (cfg *RequestConfig) Execute() (err error) {
 
 	// If we are not json, return plaintext
 	contentType := res.Header.Get("content-type")
-	isJSON := strings.Contains(contentType, "application/json") || strings.Contains(contentType, "application/vnd.api+json")
+	mediaType, _, _ := mime.ParseMediaType(contentType)
+	isJSON := strings.Contains(mediaType, "application/json") || strings.HasSuffix(mediaType, "+json")
 	if !isJSON {
 		switch dst := cfg.ResponseBodyInto.(type) {
 		case *string:
@@ -440,7 +518,7 @@ func (cfg *RequestConfig) Execute() (err error) {
 		case *[]byte:
 			*dst = contents
 		default:
-			return fmt.Errorf("expected destination type of 'string' or '[]byte' for responses with content-type that is not 'application/json'")
+			return fmt.Errorf("expected destination type of 'string' or '[]byte' for responses with content-type '%s' that is not 'application/json'", contentType)
 		}
 		return nil
 	}
@@ -459,7 +537,7 @@ func (cfg *RequestConfig) Execute() (err error) {
 	return nil
 }
 
-func ExecuteNewRequest(ctx context.Context, method string, u string, body interface{}, dst interface{}, opts ...func(*RequestConfig) error) error {
+func ExecuteNewRequest(ctx context.Context, method string, u string, body interface{}, dst interface{}, opts ...RequestOption) error {
 	cfg, err := NewRequestConfig(ctx, method, u, body, dst, opts...)
 	if err != nil {
 		return err
@@ -495,12 +573,27 @@ func (cfg *RequestConfig) Clone(ctx context.Context) *RequestConfig {
 	return new
 }
 
-func (cfg *RequestConfig) Apply(opts ...func(*RequestConfig) error) error {
+func (cfg *RequestConfig) Apply(opts ...RequestOption) error {
 	for _, opt := range opts {
-		err := opt(cfg)
+		err := opt.Apply(cfg)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func PreRequestOptions(opts ...RequestOption) (RequestConfig, error) {
+	cfg := RequestConfig{}
+	for _, opt := range opts {
+		if _, ok := opt.(PreRequestOptionFunc); !ok {
+			continue
+		}
+
+		err := opt.Apply(&cfg)
+		if err != nil {
+			return cfg, err
+		}
+	}
+	return cfg, nil
 }

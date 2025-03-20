@@ -4,12 +4,17 @@ package openai
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/openai/openai-go/internal/apijson"
+	"github.com/openai/openai-go/internal/apiquery"
 	"github.com/openai/openai-go/internal/param"
 	"github.com/openai/openai-go/internal/requestconfig"
 	"github.com/openai/openai-go/option"
+	"github.com/openai/openai-go/packages/pagination"
 	"github.com/openai/openai-go/packages/ssestream"
 	"github.com/openai/openai-go/shared"
 	"github.com/tidwall/sjson"
@@ -92,7 +97,8 @@ func FunctionMessage(name, content string) ChatCompletionMessageParamUnion {
 // automatically. You should not instantiate this service directly, and instead use
 // the [NewChatCompletionService] method instead.
 type ChatCompletionService struct {
-	Options []option.RequestOption
+	Options  []option.RequestOption
+	Messages *ChatCompletionMessageService
 }
 
 // NewChatCompletionService generates a new service that applies the given options
@@ -101,6 +107,7 @@ type ChatCompletionService struct {
 func NewChatCompletionService(opts ...option.RequestOption) (r *ChatCompletionService) {
 	r = &ChatCompletionService{}
 	r.Options = opts
+	r.Messages = NewChatCompletionMessageService(opts...)
 	return
 }
 
@@ -141,6 +148,71 @@ func (r *ChatCompletionService) NewStreaming(ctx context.Context, body ChatCompl
 	path := "chat/completions"
 	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &raw, opts...)
 	return ssestream.NewStream[ChatCompletionChunk](ssestream.NewDecoder(raw), err)
+}
+
+// Get a stored chat completion. Only chat completions that have been created with
+// the `store` parameter set to `true` will be returned.
+func (r *ChatCompletionService) Get(ctx context.Context, completionID string, opts ...option.RequestOption) (res *ChatCompletion, err error) {
+	opts = append(r.Options[:], opts...)
+	if completionID == "" {
+		err = errors.New("missing required completion_id parameter")
+		return
+	}
+	path := fmt.Sprintf("chat/completions/%s", completionID)
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodGet, path, nil, &res, opts...)
+	return
+}
+
+// Modify a stored chat completion. Only chat completions that have been created
+// with the `store` parameter set to `true` can be modified. Currently, the only
+// supported modification is to update the `metadata` field.
+func (r *ChatCompletionService) Update(ctx context.Context, completionID string, body ChatCompletionUpdateParams, opts ...option.RequestOption) (res *ChatCompletion, err error) {
+	opts = append(r.Options[:], opts...)
+	if completionID == "" {
+		err = errors.New("missing required completion_id parameter")
+		return
+	}
+	path := fmt.Sprintf("chat/completions/%s", completionID)
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodPost, path, body, &res, opts...)
+	return
+}
+
+// List stored chat completions. Only chat completions that have been stored with
+// the `store` parameter set to `true` will be returned.
+func (r *ChatCompletionService) List(ctx context.Context, query ChatCompletionListParams, opts ...option.RequestOption) (res *pagination.CursorPage[ChatCompletion], err error) {
+	var raw *http.Response
+	opts = append(r.Options[:], opts...)
+	opts = append([]option.RequestOption{option.WithResponseInto(&raw)}, opts...)
+	path := "chat/completions"
+	cfg, err := requestconfig.NewRequestConfig(ctx, http.MethodGet, path, query, &res, opts...)
+	if err != nil {
+		return nil, err
+	}
+	err = cfg.Execute()
+	if err != nil {
+		return nil, err
+	}
+	res.SetPageConfig(cfg, raw)
+	return res, nil
+}
+
+// List stored chat completions. Only chat completions that have been stored with
+// the `store` parameter set to `true` will be returned.
+func (r *ChatCompletionService) ListAutoPaging(ctx context.Context, query ChatCompletionListParams, opts ...option.RequestOption) *pagination.CursorPageAutoPager[ChatCompletion] {
+	return pagination.NewCursorPageAutoPager(r.List(ctx, query, opts...))
+}
+
+// Delete a stored chat completion. Only chat completions that have been created
+// with the `store` parameter set to `true` can be deleted.
+func (r *ChatCompletionService) Delete(ctx context.Context, completionID string, opts ...option.RequestOption) (res *ChatCompletionDeleted, err error) {
+	opts = append(r.Options[:], opts...)
+	if completionID == "" {
+		err = errors.New("missing required completion_id parameter")
+		return
+	}
+	path := fmt.Sprintf("chat/completions/%s", completionID)
+	err = requestconfig.ExecuteNewRequest(ctx, http.MethodDelete, path, nil, &res, opts...)
+	return
 }
 
 // Represents a chat completion response returned by model, based on the provided
@@ -685,6 +757,7 @@ func (r chatCompletionChunkChoicesDeltaFunctionCallJSON) RawJSON() string {
 type ChatCompletionChunkChoicesDeltaRole string
 
 const (
+	ChatCompletionChunkChoicesDeltaRoleDeveloper ChatCompletionChunkChoicesDeltaRole = "developer"
 	ChatCompletionChunkChoicesDeltaRoleSystem    ChatCompletionChunkChoicesDeltaRole = "system"
 	ChatCompletionChunkChoicesDeltaRoleUser      ChatCompletionChunkChoicesDeltaRole = "user"
 	ChatCompletionChunkChoicesDeltaRoleAssistant ChatCompletionChunkChoicesDeltaRole = "assistant"
@@ -693,7 +766,7 @@ const (
 
 func (r ChatCompletionChunkChoicesDeltaRole) IsKnown() bool {
 	switch r {
-	case ChatCompletionChunkChoicesDeltaRoleSystem, ChatCompletionChunkChoicesDeltaRoleUser, ChatCompletionChunkChoicesDeltaRoleAssistant, ChatCompletionChunkChoicesDeltaRoleTool:
+	case ChatCompletionChunkChoicesDeltaRoleDeveloper, ChatCompletionChunkChoicesDeltaRoleSystem, ChatCompletionChunkChoicesDeltaRoleUser, ChatCompletionChunkChoicesDeltaRoleAssistant, ChatCompletionChunkChoicesDeltaRoleTool:
 		return true
 	}
 	return false
@@ -1066,6 +1139,49 @@ const (
 func (r ChatCompletionContentPartTextType) IsKnown() bool {
 	switch r {
 	case ChatCompletionContentPartTextTypeText:
+		return true
+	}
+	return false
+}
+
+type ChatCompletionDeleted struct {
+	// The ID of the chat completion that was deleted.
+	ID string `json:"id,required"`
+	// Whether the chat completion was deleted.
+	Deleted bool `json:"deleted,required"`
+	// The type of object being deleted.
+	Object ChatCompletionDeletedObject `json:"object,required"`
+	JSON   chatCompletionDeletedJSON   `json:"-"`
+}
+
+// chatCompletionDeletedJSON contains the JSON metadata for the struct
+// [ChatCompletionDeleted]
+type chatCompletionDeletedJSON struct {
+	ID          apijson.Field
+	Deleted     apijson.Field
+	Object      apijson.Field
+	raw         string
+	ExtraFields map[string]apijson.Field
+}
+
+func (r *ChatCompletionDeleted) UnmarshalJSON(data []byte) (err error) {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func (r chatCompletionDeletedJSON) RawJSON() string {
+	return r.raw
+}
+
+// The type of object being deleted.
+type ChatCompletionDeletedObject string
+
+const (
+	ChatCompletionDeletedObjectChatCompletionDeleted ChatCompletionDeletedObject = "chat.completion.deleted"
+)
+
+func (r ChatCompletionDeletedObject) IsKnown() bool {
+	switch r {
+	case ChatCompletionDeletedObjectChatCompletionDeleted:
 		return true
 	}
 	return false
@@ -1508,7 +1624,7 @@ func (r ChatCompletionPredictionContentType) IsKnown() bool {
 	return false
 }
 
-// **o1 models only**
+// **o1 and o3-mini models only**
 //
 // Constrains effort on reasoning for
 // [reasoning models](https://platform.openai.com/docs/guides/reasoning). Currently
@@ -1528,6 +1644,30 @@ func (r ChatCompletionReasoningEffort) IsKnown() bool {
 		return true
 	}
 	return false
+}
+
+// A chat completion message generated by the model.
+type ChatCompletionStoreMessage struct {
+	// The identifier of the chat message.
+	ID   string                         `json:"id,required"`
+	JSON chatCompletionStoreMessageJSON `json:"-"`
+	ChatCompletionMessage
+}
+
+// chatCompletionStoreMessageJSON contains the JSON metadata for the struct
+// [ChatCompletionStoreMessage]
+type chatCompletionStoreMessageJSON struct {
+	ID          apijson.Field
+	raw         string
+	ExtraFields map[string]apijson.Field
+}
+
+func (r *ChatCompletionStoreMessage) UnmarshalJSON(data []byte) (err error) {
+	return apijson.UnmarshalRoot(data, r)
+}
+
+func (r chatCompletionStoreMessageJSON) RawJSON() string {
+	return r.raw
 }
 
 // Options for streaming response. Only set this when you set `stream: true`.
@@ -1784,7 +1924,7 @@ type ChatCompletionNewParams struct {
 	// ID of the model to use. See the
 	// [model endpoint compatibility](https://platform.openai.com/docs/models#model-endpoint-compatibility)
 	// table for details on which models work with the Chat API.
-	Model param.Field[ChatModel] `json:"model,required"`
+	Model param.Field[shared.ChatModel] `json:"model,required"`
 	// Parameters for audio output. Required when audio output is requested with
 	// `modalities: ["audio"]`.
 	// [Learn more](https://platform.openai.com/docs/guides/audio).
@@ -1837,9 +1977,13 @@ type ChatCompletionNewParams struct {
 	// compatible with
 	// [o1 series models](https://platform.openai.com/docs/guides/reasoning).
 	MaxTokens param.Field[int64] `json:"max_tokens"`
-	// Developer-defined tags and values used for filtering completions in the
-	// [dashboard](https://platform.openai.com/chat-completions).
-	Metadata param.Field[map[string]string] `json:"metadata"`
+	// Set of 16 key-value pairs that can be attached to an object. This can be useful
+	// for storing additional information about the object in a structured format, and
+	// querying for objects via API or the dashboard.
+	//
+	// Keys are strings with a maximum length of 64 characters. Values are strings with
+	// a maximum length of 512 characters.
+	Metadata param.Field[shared.MetadataParam] `json:"metadata"`
 	// Output types that you would like the model to generate for this request. Most
 	// models are capable of generating text, which is the default:
 	//
@@ -1866,7 +2010,7 @@ type ChatCompletionNewParams struct {
 	// whether they appear in the text so far, increasing the model's likelihood to
 	// talk about new topics.
 	PresencePenalty param.Field[float64] `json:"presence_penalty"`
-	// **o1 models only**
+	// **o1 and o3-mini models only**
 	//
 	// Constrains effort on reasoning for
 	// [reasoning models](https://platform.openai.com/docs/guides/reasoning). Currently
@@ -1904,9 +2048,9 @@ type ChatCompletionNewParams struct {
 	//     utilize scale tier credits until they are exhausted.
 	//   - If set to 'auto', and the Project is not Scale tier enabled, the request will
 	//     be processed using the default service tier with a lower uptime SLA and no
-	//     latency guarentee.
+	//     latency guarantee.
 	//   - If set to 'default', the request will be processed using the default service
-	//     tier with a lower uptime SLA and no latency guarentee.
+	//     tier with a lower uptime SLA and no latency guarantee.
 	//   - When not set, the default behavior is 'auto'.
 	ServiceTier param.Field[ChatCompletionNewParamsServiceTier] `json:"service_tier"`
 	// Up to 4 sequences where the API will stop generating further tokens.
@@ -2101,9 +2245,9 @@ func (r ChatCompletionNewParamsResponseFormatType) IsKnown() bool {
 //     utilize scale tier credits until they are exhausted.
 //   - If set to 'auto', and the Project is not Scale tier enabled, the request will
 //     be processed using the default service tier with a lower uptime SLA and no
-//     latency guarentee.
+//     latency guarantee.
 //   - If set to 'default', the request will be processed using the default service
-//     tier with a lower uptime SLA and no latency guarentee.
+//     tier with a lower uptime SLA and no latency guarantee.
 //   - When not set, the default behavior is 'auto'.
 type ChatCompletionNewParamsServiceTier string
 
@@ -2130,3 +2274,59 @@ type ChatCompletionNewParamsStopUnion interface {
 type ChatCompletionNewParamsStopArray []string
 
 func (r ChatCompletionNewParamsStopArray) ImplementsChatCompletionNewParamsStopUnion() {}
+
+type ChatCompletionUpdateParams struct {
+	// Set of 16 key-value pairs that can be attached to an object. This can be useful
+	// for storing additional information about the object in a structured format, and
+	// querying for objects via API or the dashboard.
+	//
+	// Keys are strings with a maximum length of 64 characters. Values are strings with
+	// a maximum length of 512 characters.
+	Metadata param.Field[shared.MetadataParam] `json:"metadata,required"`
+}
+
+func (r ChatCompletionUpdateParams) MarshalJSON() (data []byte, err error) {
+	return apijson.MarshalRoot(r)
+}
+
+type ChatCompletionListParams struct {
+	// Identifier for the last chat completion from the previous pagination request.
+	After param.Field[string] `query:"after"`
+	// Number of chat completions to retrieve.
+	Limit param.Field[int64] `query:"limit"`
+	// A list of metadata keys to filter the chat completions by. Example:
+	//
+	// `metadata[key1]=value1&metadata[key2]=value2`
+	Metadata param.Field[shared.MetadataParam] `query:"metadata"`
+	// The model used to generate the chat completions.
+	Model param.Field[string] `query:"model"`
+	// Sort order for chat completions by timestamp. Use `asc` for ascending order or
+	// `desc` for descending order. Defaults to `asc`.
+	Order param.Field[ChatCompletionListParamsOrder] `query:"order"`
+}
+
+// URLQuery serializes [ChatCompletionListParams]'s query parameters as
+// `url.Values`.
+func (r ChatCompletionListParams) URLQuery() (v url.Values) {
+	return apiquery.MarshalWithSettings(r, apiquery.QuerySettings{
+		ArrayFormat:  apiquery.ArrayQueryFormatBrackets,
+		NestedFormat: apiquery.NestedQueryFormatBrackets,
+	})
+}
+
+// Sort order for chat completions by timestamp. Use `asc` for ascending order or
+// `desc` for descending order. Defaults to `asc`.
+type ChatCompletionListParamsOrder string
+
+const (
+	ChatCompletionListParamsOrderAsc  ChatCompletionListParamsOrder = "asc"
+	ChatCompletionListParamsOrderDesc ChatCompletionListParamsOrder = "desc"
+)
+
+func (r ChatCompletionListParamsOrder) IsKnown() bool {
+	switch r {
+	case ChatCompletionListParamsOrderAsc, ChatCompletionListParamsOrderDesc:
+		return true
+	}
+	return false
+}

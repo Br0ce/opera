@@ -1,7 +1,9 @@
 # Shared Params Types
 
+- <a href="https://pkg.go.dev/github.com/openai/openai-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go/shared#ChatModel">ChatModel</a>
 - <a href="https://pkg.go.dev/github.com/openai/openai-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go/shared#FunctionDefinitionParam">FunctionDefinitionParam</a>
 - <a href="https://pkg.go.dev/github.com/openai/openai-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go/shared#FunctionParameters">FunctionParameters</a>
+- <a href="https://pkg.go.dev/github.com/openai/openai-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go/shared#MetadataParam">MetadataParam</a>
 - <a href="https://pkg.go.dev/github.com/openai/openai-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go/shared#ResponseFormatJSONObjectParam">ResponseFormatJSONObjectParam</a>
 - <a href="https://pkg.go.dev/github.com/openai/openai-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go/shared#ResponseFormatJSONSchemaParam">ResponseFormatJSONSchemaParam</a>
 - <a href="https://pkg.go.dev/github.com/openai/openai-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go/shared#ResponseFormatTextParam">ResponseFormatTextParam</a>
@@ -11,6 +13,7 @@
 - <a href="https://pkg.go.dev/github.com/openai/openai-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go/shared#ErrorObject">ErrorObject</a>
 - <a href="https://pkg.go.dev/github.com/openai/openai-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go/shared#FunctionDefinition">FunctionDefinition</a>
 - <a href="https://pkg.go.dev/github.com/openai/openai-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go/shared#FunctionParameters">FunctionParameters</a>
+- <a href="https://pkg.go.dev/github.com/openai/openai-go/shared">shared</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go/shared#Metadata">Metadata</a>
 
 # Completions
 
@@ -25,10 +28,6 @@ Methods:
 - <code title="post /completions">client.Completions.<a href="https://pkg.go.dev/github.com/openai/openai-go#CompletionService.New">New</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, body <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#CompletionNewParams">CompletionNewParams</a>) (<a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#Completion">Completion</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
 
 # Chat
-
-Params Types:
-
-- <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatModel">ChatModel</a>
 
 ## Completions
 
@@ -62,13 +61,25 @@ Response Types:
 - <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletion">ChatCompletion</a>
 - <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionAudio">ChatCompletionAudio</a>
 - <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionChunk">ChatCompletionChunk</a>
+- <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionDeleted">ChatCompletionDeleted</a>
 - <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionMessage">ChatCompletionMessage</a>
 - <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionMessageToolCall">ChatCompletionMessageToolCall</a>
+- <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionStoreMessage">ChatCompletionStoreMessage</a>
 - <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionTokenLogprob">ChatCompletionTokenLogprob</a>
 
 Methods:
 
 - <code title="post /chat/completions">client.Chat.Completions.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionService.New">New</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, body <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionNewParams">ChatCompletionNewParams</a>) (<a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletion">ChatCompletion</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+- <code title="get /chat/completions/{completion_id}">client.Chat.Completions.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionService.Get">Get</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, completionID <a href="https://pkg.go.dev/builtin#string">string</a>) (<a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletion">ChatCompletion</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+- <code title="post /chat/completions/{completion_id}">client.Chat.Completions.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionService.Update">Update</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, completionID <a href="https://pkg.go.dev/builtin#string">string</a>, body <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionUpdateParams">ChatCompletionUpdateParams</a>) (<a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletion">ChatCompletion</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+- <code title="get /chat/completions">client.Chat.Completions.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionService.List">List</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, query <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionListParams">ChatCompletionListParams</a>) (<a href="https://pkg.go.dev/github.com/openai/openai-go/packages/pagination">pagination</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go/packages/pagination#CursorPage">CursorPage</a>[<a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletion">ChatCompletion</a>], <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+- <code title="delete /chat/completions/{completion_id}">client.Chat.Completions.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionService.Delete">Delete</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, completionID <a href="https://pkg.go.dev/builtin#string">string</a>) (<a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionDeleted">ChatCompletionDeleted</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
+
+### Messages
+
+Methods:
+
+- <code title="get /chat/completions/{completion_id}/messages">client.Chat.Completions.Messages.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionMessageService.List">List</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, completionID <a href="https://pkg.go.dev/builtin#string">string</a>, query <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionMessageListParams">ChatCompletionMessageListParams</a>) (<a href="https://pkg.go.dev/github.com/openai/openai-go/packages/pagination">pagination</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go/packages/pagination#CursorPage">CursorPage</a>[<a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#ChatCompletionStoreMessage">ChatCompletionStoreMessage</a>], <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
 
 # Embeddings
 
@@ -93,7 +104,6 @@ Params Types:
 
 Response Types:
 
-- <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#FileContent">FileContent</a>
 - <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#FileDeleted">FileDeleted</a>
 - <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#FileObject">FileObject</a>
 
@@ -104,7 +114,6 @@ Methods:
 - <code title="get /files">client.Files.<a href="https://pkg.go.dev/github.com/openai/openai-go#FileService.List">List</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, query <a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#FileListParams">FileListParams</a>) (<a href="https://pkg.go.dev/github.com/openai/openai-go/packages/pagination">pagination</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go/packages/pagination#CursorPage">CursorPage</a>[<a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#FileObject">FileObject</a>], <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
 - <code title="delete /files/{file_id}">client.Files.<a href="https://pkg.go.dev/github.com/openai/openai-go#FileService.Delete">Delete</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, fileID <a href="https://pkg.go.dev/builtin#string">string</a>) (<a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#FileDeleted">FileDeleted</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
 - <code title="get /files/{file_id}/content">client.Files.<a href="https://pkg.go.dev/github.com/openai/openai-go#FileService.Content">Content</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, fileID <a href="https://pkg.go.dev/builtin#string">string</a>) (http.Response, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
-- <code title="get /files/{file_id}/content">client.Files.<a href="https://pkg.go.dev/github.com/openai/openai-go#FileService.GetContent">GetContent</a>(ctx <a href="https://pkg.go.dev/context">context</a>.<a href="https://pkg.go.dev/context#Context">Context</a>, fileID <a href="https://pkg.go.dev/builtin#string">string</a>) (<a href="https://pkg.go.dev/github.com/openai/openai-go">openai</a>.<a href="https://pkg.go.dev/github.com/openai/openai-go#FileContent">FileContent</a>, <a href="https://pkg.go.dev/builtin#error">error</a>)</code>
 
 # Images
 
