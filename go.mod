@@ -1,6 +1,6 @@
 module github.com/Br0ce/opera
 
-go 1.23.2
+go 1.24.1
 
 require (
 	github.com/docker/docker v28.0.2+incompatible
