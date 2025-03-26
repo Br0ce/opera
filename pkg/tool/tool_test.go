@@ -12,7 +12,7 @@ func TestMakeTool(t *testing.T) {
 	tests := []struct {
 		name    string
 		want    Tool
-		options []ToolOption
+		options []Option
 		wantErr bool
 	}{
 		{
@@ -28,7 +28,7 @@ func TestMakeTool(t *testing.T) {
 					Required: []string{"value"},
 				},
 			},
-			options: []ToolOption{
+			options: []Option{
 				WithName("MyName"),
 				WithDescription("My description"),
 				WithAddr(url.URL{Host: "MyHost"}),
@@ -40,7 +40,7 @@ func TestMakeTool(t *testing.T) {
 		},
 		{
 			name: "empty name",
-			options: []ToolOption{
+			options: []Option{
 				WithName(""),
 				WithAddr(url.URL{Host: "MyHost"}),
 				WithParameters(map[string]any{
@@ -51,7 +51,7 @@ func TestMakeTool(t *testing.T) {
 		},
 		{
 			name: "empty description",
-			options: []ToolOption{
+			options: []Option{
 				WithName("MyName"),
 				WithDescription(""),
 				WithAddr(url.URL{Host: "MyHost"}),
@@ -63,7 +63,7 @@ func TestMakeTool(t *testing.T) {
 		},
 		{
 			name: "empty addr",
-			options: []ToolOption{
+			options: []Option{
 				WithName("MyName"),
 				WithDescription("My description"),
 				WithAddr(url.URL{}),
@@ -75,7 +75,7 @@ func TestMakeTool(t *testing.T) {
 		},
 		{
 			name: "nil propertires",
-			options: []ToolOption{
+			options: []Option{
 				WithName("MyName"),
 				WithDescription("My description"),
 				WithAddr(url.URL{Host: "MyHost"}),
@@ -85,7 +85,7 @@ func TestMakeTool(t *testing.T) {
 		},
 		{
 			name: "no name",
-			options: []ToolOption{
+			options: []Option{
 				WithDescription("My description"),
 				WithAddr(url.URL{Host: "MyHost"}),
 				WithParameters(map[string]any{
@@ -96,7 +96,7 @@ func TestMakeTool(t *testing.T) {
 		},
 		{
 			name: "no description",
-			options: []ToolOption{
+			options: []Option{
 				WithName("MyName"),
 				WithAddr(url.URL{Host: "MyHost"}),
 				WithParameters(map[string]any{
@@ -107,7 +107,7 @@ func TestMakeTool(t *testing.T) {
 		},
 		{
 			name: "no addr",
-			options: []ToolOption{
+			options: []Option{
 				WithName("MyName"),
 				WithDescription("My description"),
 				WithParameters(map[string]any{
@@ -118,7 +118,7 @@ func TestMakeTool(t *testing.T) {
 		},
 		{
 			name: "no parameters",
-			options: []ToolOption{
+			options: []Option{
 				WithName("MyName"),
 				WithAddr(url.URL{Host: "MyHost"}),
 				WithDescription("My description"),

@@ -16,12 +16,12 @@ import (
 	"github.com/Br0ce/opera/pkg/transport"
 )
 
-type Api struct {
+type API struct {
 	mux http.Handler
 	log *slog.Logger
 }
 
-func NewHTTP(ctx context.Context, log *slog.Logger) (*Api, context.CancelFunc, error) {
+func NewHTTP(ctx context.Context, log *slog.Logger) (*API, context.CancelFunc, error) {
 	mux := http.NewServeMux()
 	transDisc := transport.NewHTTP(time.Second * 5)
 	discovery, err := docker.NewDiscovery(ctx, inmem.NewToolDB(), transDisc, log)
@@ -38,12 +38,12 @@ func NewHTTP(ctx context.Context, log *slog.Logger) (*Api, context.CancelFunc, e
 	mux.HandleFunc(fmt.Sprintf("POST /v1/agents/{%s}", handler.AgentID), agentHandler.Query)
 	mux.HandleFunc(fmt.Sprintf("DELETE /v1/agents/{%s}", handler.AgentID), agentHandler.Delete)
 
-	api := &Api{
+	api := &API{
 		mux: mux,
 		log: log,
 	}
 
-	go api.refreshDiscovery(ctx, discovery, 30*time.Second)
+	go api.refresh(ctx, discovery, 30*time.Second)
 
 	cancel := func() {
 		log.Info("cancel api", "method", "NewHTTP")
@@ -52,11 +52,11 @@ func NewHTTP(ctx context.Context, log *slog.Logger) (*Api, context.CancelFunc, e
 	return api, cancel, nil
 }
 
-func (a *Api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	a.mux.ServeHTTP(w, r)
 }
 
-func (a *Api) refreshDiscovery(ctx context.Context, discovery tool.Discovery, rate time.Duration) {
+func (a *API) refresh(ctx context.Context, discovery tool.Discovery, rate time.Duration) {
 	tick := time.Tick(rate)
 	for range tick {
 		a.log.Debug("refresh tool discovery", "method", "refreshDiscovery")

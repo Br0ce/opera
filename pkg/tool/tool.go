@@ -18,27 +18,27 @@ type Parameters struct {
 	Required   []string
 }
 
-type ToolOption func(t *Tool)
+type Option func(t *Tool)
 
-func WithName(name string) ToolOption {
+func WithName(name string) Option {
 	return func(t *Tool) {
 		t.name = name
 	}
 }
 
-func WithDescription(description string) ToolOption {
+func WithDescription(description string) Option {
 	return func(t *Tool) {
 		t.description = description
 	}
 }
 
-func WithAddr(addr url.URL) ToolOption {
+func WithAddr(addr url.URL) Option {
 	return func(t *Tool) {
 		t.addr = addr
 	}
 }
 
-func WithParameters(properties map[string]any, required []string) ToolOption {
+func WithParameters(properties map[string]any, required []string) Option {
 	return func(t *Tool) {
 		t.parameters = Parameters{
 			Properties: properties,
@@ -47,7 +47,7 @@ func WithParameters(properties map[string]any, required []string) ToolOption {
 	}
 }
 
-func MakeTool(options ...ToolOption) (Tool, error) {
+func MakeTool(options ...Option) (Tool, error) {
 	tool := &Tool{}
 	for _, opt := range options {
 		opt(tool)

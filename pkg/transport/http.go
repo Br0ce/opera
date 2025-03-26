@@ -62,7 +62,7 @@ func (tp *HTTPTransporter) do(header http.Header, request *http.Request) ([]byte
 	}
 
 	if response.StatusCode != 200 {
-		//todo check err type and if not url err add to percept
+		// Todo check err type and if not url err add to percept
 		return nil, fmt.Errorf("status code: %s", response.Status)
 	}
 

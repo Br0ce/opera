@@ -71,7 +71,7 @@ func TestDiscovery_Get(t *testing.T) {
 		},
 		{
 			name: "db error",
-			getFn: func(name string) (tool.Tool, error) {
+			getFn: func(_ string) (tool.Tool, error) {
 				return tool.Tool{}, errors.New("some error")
 			},
 			getInvoked: true,
@@ -139,7 +139,7 @@ func TestDiscovery_All(t *testing.T) {
 		{
 			name: "no tools present",
 			allFn: func() iter.Seq[tool.Tool] {
-				return func(yield func(tool.Tool) bool) {
+				return func(_ func(tool.Tool) bool) {
 				}
 			},
 			allInvoked: true,
@@ -217,7 +217,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 		{
 			name: "client error",
 			ctx:  context.TODO(),
-			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+			listContainersFn: func(_ context.Context, _ container.ListOptions) ([]container.Summary, error) {
 				return nil, errors.New("some error")
 			},
 			clearInvoked:    false,
@@ -231,7 +231,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 			name:         "no tool containers",
 			ctx:          context.TODO(),
 			clearInvoked: true,
-			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+			listContainersFn: func(_ context.Context, _ container.ListOptions) ([]container.Summary, error) {
 				return []container.Summary{
 					{
 						Image: "cont1",
@@ -251,7 +251,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 			name:         "transport error",
 			ctx:          context.TODO(),
 			clearInvoked: true,
-			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+			listContainersFn: func(_ context.Context, _ container.ListOptions) ([]container.Summary, error) {
 				return []container.Summary{
 					{
 						Image: "tool",
@@ -270,7 +270,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 			},
 			contListInvoked: true,
 			closeInvoked:    true,
-			getFn: func(ctx context.Context, addr string, header map[string][]string) ([]byte, error) {
+			getFn: func(_ context.Context, _ string, _ map[string][]string) ([]byte, error) {
 				return nil, errors.New("some error")
 			},
 			getInvoked: true,
@@ -281,7 +281,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 			name:         "invalid config error",
 			ctx:          context.TODO(),
 			clearInvoked: true,
-			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+			listContainersFn: func(_ context.Context, _ container.ListOptions) ([]container.Summary, error) {
 				return []container.Summary{
 					{
 						Image: "tool",
@@ -300,7 +300,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 			},
 			contListInvoked: true,
 			closeInvoked:    true,
-			getFn: func(ctx context.Context, addr string, header map[string][]string) ([]byte, error) {
+			getFn: func(_ context.Context, addr string, _ map[string][]string) ([]byte, error) {
 				waddr := "http://myHost:8888/myPath/config"
 				if addr != waddr {
 					t.Errorf("Discovery.Refresh() addr = %v, wantErr %v", addr, waddr)
@@ -329,7 +329,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 			name:         "add tool error",
 			ctx:          context.TODO(),
 			clearInvoked: true,
-			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+			listContainersFn: func(_ context.Context, _ container.ListOptions) ([]container.Summary, error) {
 				return []container.Summary{
 					{
 						Image: "tool",
@@ -348,7 +348,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 			},
 			contListInvoked: true,
 			closeInvoked:    true,
-			getFn: func(ctx context.Context, addr string, header map[string][]string) ([]byte, error) {
+			getFn: func(_ context.Context, addr string, _ map[string][]string) ([]byte, error) {
 				waddr := "http://myHost:8888/myPath/config"
 				if addr != waddr {
 					t.Errorf("Discovery.Refresh() addr = %v, wantErr %v", addr, waddr)
@@ -370,7 +370,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 				return bb, nil
 			},
 			getInvoked: true,
-			addFn: func(tool tool.Tool) error {
+			addFn: func(_ tool.Tool) error {
 				return errors.New("some error")
 			},
 			addInvoked: true,
@@ -380,7 +380,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 			name:         "one tool",
 			ctx:          context.TODO(),
 			clearInvoked: true,
-			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+			listContainersFn: func(_ context.Context, _ container.ListOptions) ([]container.Summary, error) {
 				return []container.Summary{
 					{
 						Image: "tool",
@@ -399,7 +399,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 			},
 			contListInvoked: true,
 			closeInvoked:    true,
-			getFn: func(ctx context.Context, addr string, header map[string][]string) ([]byte, error) {
+			getFn: func(_ context.Context, addr string, _ map[string][]string) ([]byte, error) {
 				waddr := "http://myHost:8888/myPath/config"
 				if addr != waddr {
 					t.Errorf("Discovery.Refresh() addr = %v, wantErr %v", addr, waddr)
@@ -447,7 +447,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 			name:         "two tools",
 			ctx:          context.TODO(),
 			clearInvoked: true,
-			listContainersFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+			listContainersFn: func(_ context.Context, _ container.ListOptions) ([]container.Summary, error) {
 				return []container.Summary{
 					{
 						Image: "tool",
@@ -473,7 +473,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 			},
 			contListInvoked: true,
 			closeInvoked:    true,
-			getFn: func(ctx context.Context, addr string, header map[string][]string) ([]byte, error) {
+			getFn: func(_ context.Context, addr string, _ map[string][]string) ([]byte, error) {
 				waddr := []string{"http://myHost:8888/myPath/config", "http://myOtherHost:8888/myPath/config"}
 				if !slices.Contains(waddr, addr) {
 					t.Errorf("Discovery.Refresh() addr = %v, wantErr %v", addr, waddr)
@@ -495,7 +495,7 @@ func TestDiscovery_Refresh(t *testing.T) {
 				return bb, nil
 			},
 			getInvoked: true,
-			addFn: func(to tool.Tool) error {
+			addFn: func(_ tool.Tool) error {
 				return nil
 			},
 			addInvoked: true,
@@ -587,7 +587,7 @@ func TestDiscovery_config(t *testing.T) {
 	}{
 		{
 			name: "pass",
-			getFn: func(ctx context.Context, addr string, header map[string][]string) ([]byte, error) {
+			getFn: func(ctx context.Context, addr string, _ map[string][]string) ([]byte, error) {
 				if spanContext := trace.SpanContextFromContext(ctx); !spanContext.IsValid() {
 					t.Fatal("Discovery.config() spanContext invalid")
 				}
@@ -610,7 +610,7 @@ func TestDiscovery_config(t *testing.T) {
 		},
 		{
 			name: "transport fail",
-			getFn: func(ctx context.Context, addr string, header map[string][]string) ([]byte, error) {
+			getFn: func(_ context.Context, _ string, _ map[string][]string) ([]byte, error) {
 				return nil, errors.New("some error")
 			},
 			ctx:     context.TODO(),
@@ -704,7 +704,7 @@ func TestDiscovery_toTool(t *testing.T) {
 	}{
 		{
 			name: "pass",
-			transportGetFn: func(ctx context.Context, addr string, header map[string][]string) ([]byte, error) {
+			transportGetFn: func(ctx context.Context, addr string, _ map[string][]string) ([]byte, error) {
 				if spanContext := trace.SpanContextFromContext(ctx); !spanContext.IsValid() {
 					t.Fatal("Discovery.toTool() spanContext invalid")
 				}
@@ -745,7 +745,7 @@ func TestDiscovery_toTool(t *testing.T) {
 		},
 		{
 			name: "config error",
-			transportGetFn: func(ctx context.Context, addr string, header map[string][]string) ([]byte, error) {
+			transportGetFn: func(_ context.Context, _ string, _ map[string][]string) ([]byte, error) {
 				return nil, errors.New("some config error")
 			},
 			wantInvoked: false,
@@ -819,7 +819,7 @@ func TestDiscovery_containers(t *testing.T) {
 	}{
 		{
 			name: "empty list",
-			containerListFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+			containerListFn: func(_ context.Context, _ container.ListOptions) ([]container.Summary, error) {
 				return []container.Summary{}, nil
 			},
 			ctx:                 context.TODO(),
@@ -830,7 +830,7 @@ func TestDiscovery_containers(t *testing.T) {
 		},
 		{
 			name: "pass",
-			containerListFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+			containerListFn: func(_ context.Context, _ container.ListOptions) ([]container.Summary, error) {
 				return []container.Summary{cont1, cont2}, nil
 			},
 			ctx:                 context.TODO(),
@@ -841,7 +841,7 @@ func TestDiscovery_containers(t *testing.T) {
 		},
 		{
 			name: "client error",
-			containerListFn: func(ctx context.Context, options container.ListOptions) ([]container.Summary, error) {
+			containerListFn: func(_ context.Context, _ container.ListOptions) ([]container.Summary, error) {
 				return nil, errors.New("some error")
 			},
 			ctx:                 context.TODO(),

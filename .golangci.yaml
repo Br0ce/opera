@@ -1,0 +1,29 @@
+version: "2"
+issues:
+  max-same-issues: 0
+linters:
+  default: all
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosec
+    - gosimple
+    - typecheck
+    - dogsled
+    - goprintffuncname
+    - copyloopvar
+    - stylecheck
+    - unconvert
+    - gocritic
+    - revive
+    - sloglint
+
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - goimports
+    - golines

@@ -200,7 +200,7 @@ func TestTool_Clear(t *testing.T) {
 			}
 			to.Clear()
 			var cnt int
-			to.tools.Range(func(key, value any) bool {
+			to.tools.Range(func(_, _ any) bool {
 				cnt++
 				return true
 			})

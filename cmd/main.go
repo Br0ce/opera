@@ -24,7 +24,6 @@ func main() {
 	if err := start(ctx); err != nil {
 		if !errors.Is(err, http.ErrServerClosed) {
 			fmt.Printf("start opera: %s\n", err.Error())
-			os.Exit(-1)
 		}
 	}
 }
