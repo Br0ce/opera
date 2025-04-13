@@ -33,7 +33,7 @@ services:
             - TRACING_ADDR=tracing:4318
  
   tracing:
-    image: jaegertracing/all-in-one:1.64.0
+    image: jaegertracing/jaeger:2.5.0
     container_name: jaeger
     restart: unless-stopped
     environment:

@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"path"
 
-	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Br0ce/opera/pkg/agent/function"
@@ -28,8 +27,8 @@ type Agent struct {
 	db        db.Agent
 	discovery tool.Discovery
 	tr        trace.Tracer
-	pr        propagation.TextMapPropagator
-	log       *slog.Logger
+	// pr        propagation.TextMapPropagator
+	log *slog.Logger
 }
 
 func NewAgent(engine engine.Engine, db db.Agent, discovery tool.Discovery, log *slog.Logger) *Agent {
@@ -38,14 +37,12 @@ func NewAgent(engine engine.Engine, db db.Agent, discovery tool.Discovery, log *
 		db:        db,
 		discovery: discovery,
 		tr:        monitor.Tracer("AgentHandler"),
-		pr:        monitor.Propagator(),
 		log:       log,
 	}
 }
 
 func (ag *Agent) Create(w http.ResponseWriter, r *http.Request) {
-	ctx := ag.pr.Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-	_, span := ag.tr.Start(ctx, "Create agent")
+	_, span := ag.tr.Start(r.Context(), "Create agent")
 	defer span.End()
 	ag.log.Info("create agent", "method", "Create", "traceID", monitor.TraceID(span))
 
@@ -101,8 +98,7 @@ func (ag *Agent) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ag *Agent) Query(w http.ResponseWriter, r *http.Request) {
-	ctx := ag.pr.Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-	ctx, span := ag.tr.Start(ctx, "Query agent")
+	ctx, span := ag.tr.Start(r.Context(), "Query agent")
 	defer span.End()
 
 	id := r.PathValue(AgentID)
@@ -163,8 +159,7 @@ func (ag *Agent) Query(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ag *Agent) Delete(w http.ResponseWriter, r *http.Request) {
-	ctx := ag.pr.Extract(r.Context(), propagation.HeaderCarrier(r.Header))
-	_, span := ag.tr.Start(ctx, "delete agent")
+	_, span := ag.tr.Start(r.Context(), "delete agent")
 	defer span.End()
 
 	id := r.PathValue(AgentID)
