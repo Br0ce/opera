@@ -49,6 +49,10 @@ func (eg *Engine) Query(ctx context.Context, query user.Query, agent agent.Agent
 			return content, nil
 		}
 
+		if reason, ok := next.Reason(); ok {
+			eg.log.Info(reason, "method", "Act")
+		}
+
 		percepts, err = eg.actor.Act(ctx, next)
 		if err != nil {
 			return "", fmt.Errorf("actor act: %w", err)

@@ -129,5 +129,5 @@ func decode(chat *openai.ChatCompletion) action.Action {
 		cc = append(cc, c)
 	}
 
-	return action.MakeTool(cc)
+	return action.MakeTool(cc, msg.Content)
 }

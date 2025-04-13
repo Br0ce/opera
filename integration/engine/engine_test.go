@@ -64,7 +64,8 @@ func TestEngine_Query(t *testing.T) {
 	}
 
 	reasoner := openai.NewReasoner(token, "gpt-4o", log)
-	agent := function.NewAgent("You are a  friendly assistent!", discovery, reasoner, log)
+	sysPrompt := "You are an intelligent assistant that always explains your thought process before taking action."
+	agent := function.NewAgent(sysPrompt, discovery, reasoner, log)
 	transporter := transport.NewHTTP(time.Second * 30)
 	actor := action.NewActor(discovery, transporter, log)
 
