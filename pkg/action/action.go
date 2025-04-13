@@ -7,7 +7,9 @@ import "github.com/Br0ce/opera/pkg/tool"
 // executed by a tool or a user.
 type Action struct {
 	user string
-	tool []tool.Call
+	// The reason for the action.
+	reason string
+	tool   []tool.Call
 }
 
 func MakeUser(content string) Action {
@@ -16,9 +18,10 @@ func MakeUser(content string) Action {
 	}
 }
 
-func MakeTool(calls []tool.Call) Action {
+func MakeTool(calls []tool.Call, reason string) Action {
 	return Action{
-		tool: calls,
+		reason: reason,
+		tool:   calls,
 	}
 }
 
@@ -36,4 +39,12 @@ func (a Action) Tool() (content []tool.Call, ok bool) {
 		return nil, false
 	}
 	return a.tool, true
+}
+
+// Reason reports if the action provides a reason. If true the reason is returned.
+func (a Action) Reason() (reason string, ok bool) {
+	if a.reason == "" {
+		return "", false
+	}
+	return a.reason, true
 }

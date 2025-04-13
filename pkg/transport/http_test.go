@@ -73,7 +73,7 @@ func TestHTTPTransportPost(t *testing.T) {
 				timeout: time.Second,
 			},
 			wantErr: true,
-			mockUpstream: func(w http.ResponseWriter, r *http.Request) {
+			mockUpstream: func(w http.ResponseWriter, _ *http.Request) {
 				http.Error(w, "some error", http.StatusInternalServerError)
 			},
 		},
@@ -83,7 +83,7 @@ func TestHTTPTransportPost(t *testing.T) {
 				timeout: time.Microsecond,
 			},
 			wantErr: true,
-			mockUpstream: func(w http.ResponseWriter, r *http.Request) {
+			mockUpstream: func(_ http.ResponseWriter, _ *http.Request) {
 				time.Sleep(time.Second)
 			},
 		},
@@ -118,7 +118,7 @@ func TestHTTPTransportPostTimeout(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(
-		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 			time.Sleep(time.Second)
 		}))
 	defer srv.Close()
@@ -217,7 +217,7 @@ func TestHTTPTransportGet(t *testing.T) {
 				timeout: time.Second,
 			},
 			wantErr: true,
-			mockUpstream: func(w http.ResponseWriter, r *http.Request) {
+			mockUpstream: func(w http.ResponseWriter, _ *http.Request) {
 				http.Error(w, "some error", http.StatusInternalServerError)
 			},
 		},
@@ -227,7 +227,7 @@ func TestHTTPTransportGet(t *testing.T) {
 				timeout: time.Microsecond,
 			},
 			wantErr: true,
-			mockUpstream: func(w http.ResponseWriter, r *http.Request) {
+			mockUpstream: func(_ http.ResponseWriter, _ *http.Request) {
 				time.Sleep(time.Second)
 			},
 		},
@@ -262,7 +262,7 @@ func TestHTTPTransportGetTimeout(t *testing.T) {
 	t.Parallel()
 
 	srv := httptest.NewServer(
-		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
 			time.Sleep(time.Second)
 		}))
 	defer srv.Close()

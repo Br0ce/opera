@@ -44,9 +44,10 @@ func TestMakeTool(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name  string
-		calls []tool.Call
-		want  Action
+		name   string
+		calls  []tool.Call
+		reason string
+		want   Action
 	}{
 		{
 			name: "pass",
@@ -55,12 +56,31 @@ func TestMakeTool(t *testing.T) {
 				Name:      "get_weather",
 				Arguments: "this is a JSON string",
 			}},
+			reason: "my reason",
 			want: Action{
 				tool: []tool.Call{{
 					ID:        "123",
 					Name:      "get_weather",
 					Arguments: "this is a JSON string",
 				}},
+				reason: "my reason",
+			},
+		},
+		{
+			name: "pass without reason",
+			calls: []tool.Call{{
+				ID:        "123",
+				Name:      "get_weather",
+				Arguments: "this is a JSON string",
+			}},
+			reason: "",
+			want: Action{
+				tool: []tool.Call{{
+					ID:        "123",
+					Name:      "get_weather",
+					Arguments: "this is a JSON string",
+				}},
+				reason: "",
 			},
 		},
 		{
@@ -93,7 +113,7 @@ func TestMakeTool(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if got := MakeTool(test.calls); !reflect.DeepEqual(got, test.want) {
+			if got := MakeTool(test.calls, test.reason); !reflect.DeepEqual(got, test.want) {
 				t.Errorf("MakeTool() = %v, want %v", got, test.want)
 			}
 		})
@@ -186,6 +206,44 @@ func TestAction_Tool(t *testing.T) {
 			}
 			if ok != test.ok {
 				t.Errorf("Action.Tool() ok = %v, want %v", ok, test.ok)
+			}
+		})
+	}
+}
+
+func TestAction_Reason(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		reason     string
+		wantReason string
+		wantOk     bool
+	}{
+		{
+			name:       "pass",
+			reason:     "my reason",
+			wantReason: "my reason",
+			wantOk:     true,
+		},
+		{
+			name:       "empty reason",
+			reason:     "",
+			wantReason: "",
+			wantOk:     false,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			a := Action{
+				reason: test.reason,
+			}
+			gotReason, gotOk := a.Reason()
+			if gotReason != test.wantReason {
+				t.Errorf("Action.Reason() gotReason = %v, want %v", gotReason, test.wantReason)
+			}
+			if gotOk != test.wantOk {
+				t.Errorf("Action.Reason() gotOk = %v, want %v", gotOk, test.wantOk)
 			}
 		})
 	}
