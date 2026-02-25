@@ -1,5 +1,7 @@
 # Opera: A Tool-Discovering Multi-Agent Agent Framework
 
+> ⚠️ This project is deprecated in favor of the MCP-based stack, which supersedes Opera for new development.
+
 ![Build Status](https://github.com/Br0ce/opera/actions/workflows/ci.yml/badge.svg)
 [![go.mod Go version](https://img.shields.io/github/go-mod/go-version/Br0ce/opera)](https://github.com/Br0ce/opera)
 [![Go Reference](https://pkg.go.dev/badge/github.com/Br0ce/opera.svg)](https://pkg.go.dev/github.com/Br0ce/opera)
